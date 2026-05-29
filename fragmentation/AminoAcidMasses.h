@@ -61,7 +61,7 @@ void INITIALIZE_MASS(double *pdMassAA,
    pdMassAA['Y'] = C*9  + H*9  + N   + O*2 ;
    pdMassAA['W'] = C*11 + H*10 + N*2 + O ;
    pdMassAA['U'] = C*3  + H*5  + N   + O + Se;
-   pdMassAA['O'] = C*5  + H*12 + N*2 + O*2 ;
+   pdMassAA['O'] = C*12 + H*19 + N*3 + O*2 ;
 
    pdMassAA['J'] = 0.0;
    pdMassAA['X'] = 0.0;
