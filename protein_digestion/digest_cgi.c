@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "cgi-page.h"
 
 /* HTML-encode a string to stdout, escaping chars that are special in HTML attributes/content. */
 static void print_html_encoded(const char *s)
@@ -73,7 +74,6 @@ int main(int argc, char **argv)
    int iNumAllowedMissed;
    int iEnzymeNum;
    char szInputSequence[100000];
-   FILE  *fp;
    int iCustomEnzymeSense;
    char szCustomEnzymeCut[48];
    char szCustomEnzymeNoCut[48];
@@ -84,49 +84,43 @@ int main(int argc, char **argv)
    printf("Content-type: text/html\n\n");
 
    // header
-   if ( (fp=fopen("/net/pr/vol3/www/html/__header.php","r"))!=NULL)
-   {
-      char szBuf[1000];
-
-      while (fgets(szBuf, 1000, fp))
-      {
-         // strip out php commands
-         if (strstr(szBuf, "<?php"))
-         {
-            int i;
-
-            for (i=0; i<(int)strlen(szBuf); i++)
-            {
-               if (!strncmp(szBuf+i, "<?php", 5))
-               {
-                  while (strncmp(szBuf+i, "?>", 2))
-                     i++;
-                  i += 1;
-               }
-               else
-                  printf("%c", szBuf[i]);
-            }
-
-         }
-         else if (strstr(szBuf, "<body>"))
-         {
-            printf("   <style>\n");
-            printf("      table, th, td {width: 1%%; font-family:\"Courier New\", Courier, monospace; font-size:90%%; border: 1px solid #ADD8E6; padding-left: 0.4rem; padding-right: 0.4rem; text-align: center}\n");
-            printf("      th {background-color: #F0FFFF}\n");
-            printf("      a:link {text-decoration: none}\n");
-            printf("   </style>\n");
-            printf("%s", szBuf);
-         }
-         else
-         {
-            if (strstr(szBuf, "</head>"))
-               printf("     <script type=\"text/javascript\" src=\"/js/sorttable.js\"></script>\n");
-
-            printf("%s", szBuf);
-         }
-      }
-      fclose(fp);
-   }
+   PRINT_PAGE_HEADER("Protein digestion",
+         "   <style>\n"
+         "      table {width: 1%; border: none}\n"
+         "      th, td {font-family:\"Courier New\", Courier, monospace; font-size:90%; border: 1px solid #ADD8E6; padding-left: 0.4rem; padding-right: 0.4rem; text-align: center}\n"
+         "      th {background-color: #F0FFFF}\n"
+         "      a:link {text-decoration: none}\n"
+         "   </style>\n"
+         "   <script>\n"
+         "      // Minimal replacement for sorttable.js: click a <th> in a table.sortable to sort by that column.\n"
+         "      document.addEventListener('DOMContentLoaded', function () {\n"
+         "         document.querySelectorAll('table.sortable').forEach(function (table) {\n"
+         "            var ths = table.querySelectorAll('thead th');\n"
+         "            ths.forEach(function (th, col) {\n"
+         "               th.style.cursor = 'pointer';\n"
+         "               th.title = 'Click to sort';\n"
+         "               th.addEventListener('click', function () {\n"
+         "                  var tbody = table.tBodies[0];\n"
+         "                  if (!tbody) return;\n"
+         "                  var rows = Array.prototype.slice.call(tbody.rows);\n"
+         "                  var asc = th.getAttribute('data-sort') !== 'asc';\n"
+         "                  ths.forEach(function (h) { h.removeAttribute('data-sort'); h.textContent = h.textContent.replace(/[\\u25B2\\u25BC]$/, ''); });\n"
+         "                  th.setAttribute('data-sort', asc ? 'asc' : 'desc');\n"
+         "                  var txt = function (r) { var c = r.cells[col]; return c ? c.textContent.trim() : ''; };\n"
+         "                  var numeric = rows.every(function (r) { var t = txt(r); return t === '' || (!isNaN(parseFloat(t)) && isFinite(t)); });\n"
+         "                  rows.sort(function (a, b) {\n"
+         "                     var x = txt(a), y = txt(b), c;\n"
+         "                     if (numeric) c = (parseFloat(x) || 0) - (parseFloat(y) || 0);\n"
+         "                     else c = x.localeCompare(y);\n"
+         "                     return asc ? c : -c;\n"
+         "                  });\n"
+         "                  rows.forEach(function (r) { tbody.appendChild(r); });\n"
+         "                  th.textContent += asc ? '\\u25B2' : '\\u25BC';\n"
+         "               });\n"
+         "            });\n"
+         "         });\n"
+         "      });\n"
+         "   </script>\n");
    printf("\n");
 
    printf("    <div id=\"page\" class=\"container\">\n");
@@ -384,16 +378,8 @@ GPRHYTIAALLSPYSYSTTALVSSPKA'\n");
    printf("</div>\n");
    printf("</div>\n");
 
-   if ( (fp=fopen("/net/pr/vol3/www/html/__footer.php","r"))!=NULL)
-   {
-      char szBuf[1000];
-
-      while (fgets(szBuf, 1000, fp))
-      {
-         printf("%s", szBuf);
-      }
-      fclose(fp);
-   }
+   // footer
+   PRINT_PAGE_FOOTER();
 
    exit(EXIT_SUCCESS);
 } /*main*/

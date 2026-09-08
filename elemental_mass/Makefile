@@ -6,7 +6,7 @@ all: element
 element: element_cgi.o cgi-util.o
 	${CPP} element_cgi.o cgi-util.o -o element.cgi -lm
 
-element_cgi.o: element_cgi.c AminoAcidMasses.h
+element_cgi.o: element_cgi.c AminoAcidMasses.h cgi-page.h
 	${CPP} ${CPPFLAGS} -c element_cgi.c -o element_cgi.o
 
 cgi-util.o: cgi-util.cpp cgi-util.h

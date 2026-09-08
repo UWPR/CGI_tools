@@ -6,7 +6,7 @@ all: digest
 digest: digest_cgi.o cgi-util.o
 	${CPP} digest_cgi.o cgi-util.o -o digest.cgi -lm
 
-digest_cgi.o: digest_cgi.c
+digest_cgi.o: digest_cgi.c cgi-page.h
 	${CPP} ${CPPFLAGS} -c digest_cgi.c -o digest_cgi.o
 
 cgi-util.o: cgi-util.cpp cgi-util.h

@@ -8,6 +8,7 @@
 #include <ctype.h>
 
 #include "isotopes.h"
+#include "cgi-page.h"
 
 /* HTML-encode a string to stdout, escaping chars special in HTML attributes/content. */
 static void print_html_encoded(const char *s)
@@ -52,7 +53,6 @@ extern void unescape_url(char *url);
 
 int main(int argc, char **argv)
 {
-   FILE *fp;
 
    int iC = 0;
    int iH = 0;
@@ -72,37 +72,7 @@ int main(int argc, char **argv)
 
 
    // header
-   if ( (fp=fopen("/net/pr/vol3/www/html/__header.php","r"))!=NULL)
-   {
-      char szBuf[1000];
-
-      while (fgets(szBuf, 1000, fp))
-      {
-         // strip out php commands
-         if (strstr(szBuf, "<?php"))
-         {
-            int i;
-
-            for (i=0; i<(int)strlen(szBuf); i++)
-            {
-               if (!strncmp(szBuf+i, "<?php", 5))
-               {
-                  while (strncmp(szBuf+i, "?>", 2))
-                     i++;
-                  i += 1;
-               }
-               else
-                  printf("%c", szBuf[i]);
-            }
-
-         }
-         else
-         {
-            printf("%s", szBuf);
-         }
-      }
-      fclose(fp);
-   }
+   PRINT_PAGE_HEADER("Peptide Isotope Calculator", NULL);
    printf("\n");
 
    printf("    <div id=\"page\" class=\"container\">\n");
@@ -156,7 +126,10 @@ int main(int argc, char **argv)
    printf("            <br>peptide: <input type=\"text\" name=\"sequence\" id=\"peptide\" size=\"40\" value=\"");
    print_html_encoded(szInput);
    printf("\">\n");
-   printf("            <br>charge: <input type=\"text\" name=\"charge\" id=\"charge\" size=\"2\" value=\"%d\"> ... precursor charge state is used only in the calculation of m/z values\n", iCharge);
+   printf("            <br>charge: <select name=\"charge\" id=\"charge\">\n");
+   for (int z = 1; z <= 20; z++)
+      printf("               <option value=\"%d\"%s>%d</option>\n", z, (z == iCharge ? " selected" : ""), z);
+   printf("            </select> ... precursor charge state is used only in the calculation of m/z values\n");
    printf("            <p><br>&nbsp; <input type=\"submit\" value=\"Calculate\">\n");
    printf("         </div>\n");
    printf("\n");
@@ -318,38 +291,8 @@ int main(int argc, char **argv)
 
    }
 
-   if ( (fp=fopen("/net/pr/vol3/www/html/__footer.php","r"))!=NULL)
-   {
-      char szBuf[1000];
-
-      while (fgets(szBuf, 1000, fp))
-      {
-         // strip out php commands
-         if (strstr(szBuf, "<?php"))
-         {
-            int i;
-            int iLen = strlen(szBuf);
-
-            for (i=0; i<iLen; i++)
-            {
-               if (!strncmp(szBuf+i, "<?php", 5))
-               {
-                  while (strncmp(szBuf+i, "?>", 2))
-                     i++;
-                  i += 1;
-               }
-               else
-                  printf("%c", szBuf[i]);
-            }
-
-         }
-         else
-         {
-            printf("%s", szBuf);
-         }
-      }
-      fclose(fp);
-   }
+   // footer
+   PRINT_PAGE_FOOTER();
 
    exit(EXIT_SUCCESS);
 }
@@ -531,6 +474,10 @@ void EXTRACT_QUERY_STRING(char *szInputSequence,
             {
                getword(szWord, szQuery, '&'); plustospace(szWord); unescape_url(szWord);
                sscanf(szWord, "%d", iCharge);
+               if (*iCharge < 1)
+                  *iCharge = 1;
+               else if (*iCharge > 20)
+                  *iCharge = 20;
             }
             else
             {

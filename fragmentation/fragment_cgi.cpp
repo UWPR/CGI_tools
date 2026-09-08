@@ -23,6 +23,7 @@ static void print_html_encoded(const char *s)
 }
 
 #include "AminoAcidMasses.h"
+#include "cgi-page.h"
 
 #define SAMPLEPEPTIDE "DIGSESTEDQAMEDIK"
 #define MAX_SEQUENCE 100000
@@ -64,7 +65,6 @@ int main(int argc, char **argv)
    char szInputSequence[MAX_SEQUENCE];
    char szUserMods[MAX_SEQUENCE];
 
-   FILE  *fp;
 
    double pdMassAA[128];
    double pdPositionMod[MAX_SEQUENCE];
@@ -88,46 +88,12 @@ int main(int argc, char **argv)
 //       printf("\n#myStyledTable td { padding-left: 0.4rem; padding-right: 0.4rem; text-align: right; border: 1px solid; border-color: #ADD8E6; }\n");
 
    // header
-   if ( (fp=fopen("/net/pr/vol3/www/html/__header.php","r"))!=NULL)
-   {
-      char szBuf[1000];
-
-      while (fgets(szBuf, 1000, fp))
-      {
-         // strip out php commands
-         if (strstr(szBuf, "<?php"))
-         {
-            int i;
-
-            int iLen = strlen(szBuf);
-            for (i=0; i<iLen; i++)
-            {
-               if (!strncmp(szBuf+i, "<?php", 5))
-               {
-                  while (strncmp(szBuf+i, "?>", 2))
-                     i++;
-                  i += 1;
-               }
-               else
-                  printf("%c", szBuf[i]);
-            }
-
-         }
-         else if (strstr(szBuf, "<body>"))
-         {
-            printf("   <style>\n");
-            printf("      table, th, td {width: 1%%; font-family:\"Courier New\", Courier, monospace; font-size: 11px; border: 1px solid #ADD8E6; padding-left: 0.4rem; padding-right: 0.4rem; text-align: right}\n");
-            printf("      th {background-color: #F0FFFF}\n");
-            printf("   </style>\n");
-            printf("%s", szBuf);
-         }
-         else
-         {
-            printf("%s", szBuf);
-         }
-      }
-      fclose(fp);
-   }
+   PRINT_PAGE_HEADER("Peptide fragmentation",
+         "   <style>\n"
+         "      table {width: 1%; border: none}\n"
+         "      th, td {font-family:\"Courier New\", Courier, monospace; font-size: 11px; border: 1px solid #ADD8E6; padding-left: 0.4rem; padding-right: 0.4rem; text-align: right}\n"
+         "      th {background-color: #F0FFFF}\n"
+         "   </style>\n");
    printf("\n");
 
    printf("    <div id=\"page\" class=\"container\">\n");
@@ -360,7 +326,7 @@ int main(int argc, char **argv)
          dYion = dPepMass;
 
          printf("<center>\n");
-         printf("<table style='font-family:\"Courier New\", Courier, monospace; width: 1%%; font-size: 11px; border: 1px solid ; border-color: #ADD8E6;'>\n");
+         printf("<table style='font-family:\"Courier New\", Courier, monospace; width: 1%%; font-size: 11px;'>\n");
          printf("<thead>");
          //printf("<tr align=\"center\">");
          printf("<tr>");
@@ -569,38 +535,7 @@ int main(int argc, char **argv)
    printf("</div>\n");
 
    // footer
-   if ( (fp=fopen("/net/pr/vol3/www/html/__footer.php","r"))!=NULL)
-   {
-      char szBuf[1000];
-
-      while (fgets(szBuf, 1000, fp))
-      {
-         // strip out php commands
-         if (strstr(szBuf, "<?php"))
-         {
-            int i;
-
-            int iLen = strlen(szBuf);
-            for (i=0; i<iLen; i++)
-            {
-               if (!strncmp(szBuf+i, "<?php", 5))
-               {
-                  while (strncmp(szBuf+i, "?>", 2))
-                     i++;
-                  i += 1;
-               }
-               else
-                  printf("%c", szBuf[i]);
-            }
-
-         }
-         else
-         {
-            printf("%s", szBuf);
-         }
-      }
-      fclose(fp);
-   }
+   PRINT_PAGE_FOOTER();
 
    exit(EXIT_SUCCESS);
 }

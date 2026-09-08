@@ -4,6 +4,7 @@
 #include <ctype.h>
 
 #include "AminoAcidMasses.h"
+#include "cgi-page.h"
 
 #define MAX_SEQUENCE 100000
 #define MAX_CHARGE   10
@@ -26,7 +27,6 @@ int main(int argc, char **argv)
 {
    int iMassType;
 
-   FILE  *fp;
 
    double pdMassAA[128];
 
@@ -41,37 +41,7 @@ int main(int argc, char **argv)
 
 
    // header
-   if ( (fp=fopen("/net/pr/vol3/www/html/__header.php","r"))!=NULL)
-   {
-      char szBuf[1000];
-
-      while (fgets(szBuf, 1000, fp))
-      {
-         // strip out php commands
-         if (strstr(szBuf, "<?php"))
-         {
-            int i;
-
-            for (i=0; i<(int)strlen(szBuf); i++)
-            {
-               if (!strncmp(szBuf+i, "<?php", 5))
-               {
-                  while (strncmp(szBuf+i, "?>", 2))
-                     i++;
-                  i += 1;
-               }
-               else
-                  printf("%c", szBuf[i]);
-            }
-
-         }
-         else
-         {
-            printf("%s", szBuf);
-         }
-      }
-      fclose(fp);
-   }
+   PRINT_PAGE_HEADER("Element mass", NULL);
    printf("\n");
 
    printf("    <div id=\"page\" class=\"container\">\n");
@@ -93,12 +63,13 @@ int main(int argc, char **argv)
       printf("         <form action=\"%s\" name=\"fragmentForm\" method=\"post\">\n", szScriptName ? szScriptName : "");
    }
 
-   printf("<br>C <input type=\"text\" name=\"C\" size=\"2\" value=\"%d\">\n", iC);
-   printf("H <input type=\"text\" name=\"H\" size=\"2\" value=\"%d\">\n", iH);
-   printf("N <input type=\"text\" name=\"N\" size=\"2\" value=\"%d\">\n", iN);
-   printf("O <input type=\"text\" name=\"O\" size=\"2\" value=\"%d\">\n", iO);
-   printf("P <input type=\"text\" name=\"P\" size=\"2\" value=\"%d\">\n", iP);
-   printf("S <input type=\"text\" name=\"S\" size=\"2\" value=\"%d\">\n", iS);
+   // each box has an id and oninput hook so the results update live in the browser (see script below)
+   printf("<br>C <input type=\"text\" name=\"C\" id=\"C\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iC);
+   printf("H <input type=\"text\" name=\"H\" id=\"H\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iH);
+   printf("N <input type=\"text\" name=\"N\" id=\"N\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iN);
+   printf("O <input type=\"text\" name=\"O\" id=\"O\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iO);
+   printf("P <input type=\"text\" name=\"P\" id=\"P\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iP);
+   printf("S <input type=\"text\" name=\"S\" id=\"S\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iS);
 
    printf("\n&nbsp; &nbsp; <input type=\"submit\" value=\"Go\"><br>\n");
 
@@ -140,41 +111,42 @@ int main(int argc, char **argv)
          printf("S%d:  %f<br>\n", iS, iS * pdMassAA['s']);
    }
    printf("</div>\n");
+
+   // Live recalculation in the browser. The element masses are taken from
+   // the same table the server-side calculation uses (pdMassAA) so the two
+   // always agree; the Go button / server path is kept as a fallback for
+   // browsers without JavaScript.
+   printf("<script>\n");
+   printf("   var elemMass = { C: %.13g, H: %.13g, N: %.13g, O: %.13g, P: %.13g, S: %.13g };\n",
+         pdMassAA['c'], pdMassAA['h'], pdMassAA['n'], pdMassAA['o'], pdMassAA['p'], pdMassAA['s']);
+   printf("   var protonMass = %.13g;\n", PROTON_MASS);
+   printf("   function elemCount(id) {\n");
+   printf("      var n = parseInt(document.getElementById(id).value, 10);\n");
+   printf("      return isNaN(n) ? 0 : n;\n");
+   printf("   }\n");
+   printf("   function updateMass() {\n");
+   printf("      var order = ['C', 'H', 'N', 'O', 'P', 'S'];\n");
+   printf("      var mass = 0, i, html;\n");
+   printf("      for (i = 0; i < order.length; i++)\n");
+   printf("         mass += elemCount(order[i]) * elemMass[order[i]];\n");
+   printf("      html = '<br><tt>monoisotopic neutral mass:  ' + mass.toFixed(6);\n");
+   printf("      for (i = 1; i <= 5; i++)\n");
+   printf("         html += (i == 1 ? '<br><br>' : '<br>') + i + '+: ' + ((mass + i * protonMass) / i).toFixed(6) + '\\n';\n");
+   printf("      html += '<br><br>';\n");
+   printf("      for (i = 0; i < order.length; i++) {\n");
+   printf("         var n = elemCount(order[i]);\n");
+   printf("         if (n > 0)\n");
+   printf("            html += order[i] + n + ':  ' + (n * elemMass[order[i]]).toFixed(6) + '<br>\\n';\n");
+   printf("      }\n");
+   printf("      document.getElementById('results').innerHTML = html;\n");
+   printf("   }\n");
+   printf("</script>\n");
+
    printf("</div>\n");
    printf("</div>\n");
 
    // footer
-   if ( (fp=fopen("/net/pr/vol3/www/html/__footer.php","r"))!=NULL)
-   {
-      char szBuf[1000];
-
-      while (fgets(szBuf, 1000, fp))
-      {
-         // strip out php commands
-         if (strstr(szBuf, "<?php"))
-         {
-            int i;
-
-            for (i=0; i<(int)strlen(szBuf); i++)
-            {
-               if (!strncmp(szBuf+i, "<?php", 5))
-               {
-                  while (strncmp(szBuf+i, "?>", 2))
-                     i++;
-                  i += 1;
-               }
-               else
-                  printf("%c", szBuf[i]);
-            }
-
-         }
-         else
-         {
-            printf("%s", szBuf);
-         }
-      }
-      fclose(fp);
-   }
+   PRINT_PAGE_FOOTER();
 
    exit(EXIT_SUCCESS);
 }
@@ -237,42 +209,42 @@ void EXTRACT_QUERY_STRING(int *iC,
 
             if (!strcmp(szWord, "C") )
             {
-               int iVal;
+               int iVal = 0;   /* non-numeric input counts as zero */
                getword(szWord, szQuery, '&'); plustospace(szWord); unescape_url(szWord);
                sscanf(szWord, "%d", &iVal);
                *iC = iVal;
             }
             else if (!strcmp(szWord, "H") )
             {
-               int iVal;
+               int iVal = 0;   /* non-numeric input counts as zero */
                getword(szWord, szQuery, '&'); plustospace(szWord); unescape_url(szWord);
                sscanf(szWord, "%d", &iVal);
                *iH = iVal;
             }
             else if (!strcmp(szWord, "N") )
             {
-               int iVal;
+               int iVal = 0;   /* non-numeric input counts as zero */
                getword(szWord, szQuery, '&'); plustospace(szWord); unescape_url(szWord);
                sscanf(szWord, "%d", &iVal);
                *iN = iVal;
             }
             else if (!strcmp(szWord, "O") )
             {
-               int iVal;
+               int iVal = 0;   /* non-numeric input counts as zero */
                getword(szWord, szQuery, '&'); plustospace(szWord); unescape_url(szWord);
                sscanf(szWord, "%d", &iVal);
                *iO = iVal;
             }
             else if (!strcmp(szWord, "P") )
             {
-               int iVal;
+               int iVal = 0;   /* non-numeric input counts as zero */
                getword(szWord, szQuery, '&'); plustospace(szWord); unescape_url(szWord);
                sscanf(szWord, "%d", &iVal);
                *iP = iVal;
             }
             else if (!strcmp(szWord, "S") )
             {
-               int iVal;
+               int iVal = 0;   /* non-numeric input counts as zero */
                getword(szWord, szQuery, '&'); plustospace(szWord); unescape_url(szWord);
                sscanf(szWord, "%d", &iVal);
                *iS = iVal;

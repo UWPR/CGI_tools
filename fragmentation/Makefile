@@ -6,7 +6,7 @@ all: fragment
 fragment: fragment_cgi.o cgi-util.o
 	${CPP} fragment_cgi.o cgi-util.o -o fragment.cgi -lm
 
-fragment_cgi.o: fragment_cgi.cpp AminoAcidMasses.h
+fragment_cgi.o: fragment_cgi.cpp AminoAcidMasses.h cgi-page.h
 	${CPP} ${CPPFLAGS} -c fragment_cgi.cpp -o fragment_cgi.o
 
 cgi-util.o: cgi-util.cpp cgi-util.h

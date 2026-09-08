@@ -8,7 +8,7 @@ all: calcisotopes
 calcisotopes: calcisotopes_cgi.o  isotopes.o cgi-util.o
 	${CXX} calcisotopes_cgi.o isotopes.o cgi-util.o -o calcisotopes.cgi -lm
 
-calcisotopes_cgi.o: calcisotopes_cgi.cpp
+calcisotopes_cgi.o: calcisotopes_cgi.cpp cgi-page.h
 	${CXX} ${CXXFLAGS} calcisotopes_cgi.cpp -o calcisotopes_cgi.o
 
 isotopes.o: isotopes.cpp
