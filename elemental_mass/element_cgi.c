@@ -48,8 +48,8 @@ int main(int argc, char **argv)
    printf("       <section>\n");
    printf("          <header class=\"major\">\n");
    printf("             <h2>Element mass</h2>\n");
+   printf("             <p class=\"lede\">Enter element counts to get the monoisotopic neutral mass and the m/z values for charge states 1+ through 5+. Results update as you type.</p>\n");
    printf("          </header>\n");
-
 
    fflush(stdout);
 
@@ -64,15 +64,18 @@ int main(int argc, char **argv)
    }
 
    // each box has an id and oninput hook so the results update live in the browser (see script below)
-   printf("<br>C <input type=\"text\" name=\"C\" id=\"C\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iC);
-   printf("H <input type=\"text\" name=\"H\" id=\"H\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iH);
-   printf("N <input type=\"text\" name=\"N\" id=\"N\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iN);
-   printf("O <input type=\"text\" name=\"O\" id=\"O\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iO);
-   printf("P <input type=\"text\" name=\"P\" id=\"P\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iP);
-   printf("S <input type=\"text\" name=\"S\" id=\"S\" size=\"2\" value=\"%d\" oninput=\"updateMass()\">\n", iS);
-
-   printf("\n&nbsp; &nbsp; <input type=\"submit\" value=\"Go\"><br>\n");
-
+   printf("         <div class=\"panel\">\n");
+   printf("            <span class=\"field-label\">Elemental composition</span>\n");
+   printf("            <div class=\"elements\">\n");
+   printf("               <label>C<input type=\"text\" name=\"C\" id=\"C\" class=\"short mono\" value=\"%d\" oninput=\"updateMass()\"></label>\n", iC);
+   printf("               <label>H<input type=\"text\" name=\"H\" id=\"H\" class=\"short mono\" value=\"%d\" oninput=\"updateMass()\"></label>\n", iH);
+   printf("               <label>N<input type=\"text\" name=\"N\" id=\"N\" class=\"short mono\" value=\"%d\" oninput=\"updateMass()\"></label>\n", iN);
+   printf("               <label>O<input type=\"text\" name=\"O\" id=\"O\" class=\"short mono\" value=\"%d\" oninput=\"updateMass()\"></label>\n", iO);
+   printf("               <label>P<input type=\"text\" name=\"P\" id=\"P\" class=\"short mono\" value=\"%d\" oninput=\"updateMass()\"></label>\n", iP);
+   printf("               <label>S<input type=\"text\" name=\"S\" id=\"S\" class=\"short mono\" value=\"%d\" oninput=\"updateMass()\"></label>\n", iS);
+   printf("               <input type=\"submit\" value=\"Go\">\n");
+   printf("            </div>\n");
+   printf("         </div>\n");
    printf("         </form>\n\n");
    printf("         <div id=\"results\">\n");
 
@@ -89,28 +92,32 @@ int main(int argc, char **argv)
          +  iP * pdMassAA['p']
          +  iS * pdMassAA['s'];
 
-      printf("<br><tt>monoisotopic neutral mass:  %0.6f", dMass);
-      printf("<br><br>1+: %0.6f\n", (dMass + 1*PROTON_MASS)/1);
-      printf("<br>2+: %0.6f\n", (dMass + 2*PROTON_MASS)/2);
-      printf("<br>3+: %0.6f\n", (dMass + 3*PROTON_MASS)/3);
-      printf("<br>4+: %0.6f\n", (dMass + 4*PROTON_MASS)/4);
-      printf("<br>5+: %0.6f\n", (dMass + 5*PROTON_MASS)/5);
-
-      printf("<br><br>");
+      // NOTE: the JavaScript updateMass() below must generate exactly this markup
+      printf("<div class=\"readout\">\n");
+      printf("<div class=\"readout-hero\"><span>monoisotopic neutral mass</span><strong>%0.6f</strong></div>\n", dMass);
+      printf("<pre>");
+      printf("1+: %0.6f\n", (dMass + 1*PROTON_MASS)/1);
+      printf("2+: %0.6f\n", (dMass + 2*PROTON_MASS)/2);
+      printf("3+: %0.6f\n", (dMass + 3*PROTON_MASS)/3);
+      printf("4+: %0.6f\n", (dMass + 4*PROTON_MASS)/4);
+      printf("5+: %0.6f\n", (dMass + 5*PROTON_MASS)/5);
+      printf("\n");
       if (iC > 0)
-         printf("C%d:  %f<br>\n", iC, iC * pdMassAA['c']);
+         printf("C%d:  %f\n", iC, iC * pdMassAA['c']);
       if (iH > 0)
-         printf("H%d:  %f<br>\n", iH, iH * pdMassAA['h']);
+         printf("H%d:  %f\n", iH, iH * pdMassAA['h']);
       if (iN > 0)
-         printf("N%d:  %f<br>\n", iN, iN * pdMassAA['n']);
+         printf("N%d:  %f\n", iN, iN * pdMassAA['n']);
       if (iO > 0)
-         printf("O%d:  %f<br>\n", iO, iO * pdMassAA['o']);
+         printf("O%d:  %f\n", iO, iO * pdMassAA['o']);
       if (iP > 0)
-         printf("P%d:  %f<br>\n", iP, iP * pdMassAA['p']);
+         printf("P%d:  %f\n", iP, iP * pdMassAA['p']);
       if (iS > 0)
-         printf("S%d:  %f<br>\n", iS, iS * pdMassAA['s']);
+         printf("S%d:  %f\n", iS, iS * pdMassAA['s']);
+      printf("</pre>\n");
+      printf("</div>\n");
    }
-   printf("</div>\n");
+   printf("</div>\n");  // results
 
    // Live recalculation in the browser. The element masses are taken from
    // the same table the server-side calculation uses (pdMassAA) so the two
@@ -129,21 +136,22 @@ int main(int argc, char **argv)
    printf("      var mass = 0, i, html;\n");
    printf("      for (i = 0; i < order.length; i++)\n");
    printf("         mass += elemCount(order[i]) * elemMass[order[i]];\n");
-   printf("      html = '<br><tt>monoisotopic neutral mass:  ' + mass.toFixed(6);\n");
+   printf("      html = '<div class=\"readout\">\\n<div class=\"readout-hero\"><span>monoisotopic neutral mass</span><strong>' + mass.toFixed(6) + '</strong></div>\\n<pre>';\n");
    printf("      for (i = 1; i <= 5; i++)\n");
-   printf("         html += (i == 1 ? '<br><br>' : '<br>') + i + '+: ' + ((mass + i * protonMass) / i).toFixed(6) + '\\n';\n");
-   printf("      html += '<br><br>';\n");
+   printf("         html += i + '+: ' + ((mass + i * protonMass) / i).toFixed(6) + '\\n';\n");
+   printf("      html += '\\n';\n");
    printf("      for (i = 0; i < order.length; i++) {\n");
    printf("         var n = elemCount(order[i]);\n");
    printf("         if (n > 0)\n");
-   printf("            html += order[i] + n + ':  ' + (n * elemMass[order[i]]).toFixed(6) + '<br>\\n';\n");
+   printf("            html += order[i] + n + ':  ' + (n * elemMass[order[i]]).toFixed(6) + '\\n';\n");
    printf("      }\n");
+   printf("      html += '</pre>\\n</div>\\n';\n");
    printf("      document.getElementById('results').innerHTML = html;\n");
    printf("   }\n");
    printf("</script>\n");
 
-   printf("</div>\n");
-   printf("</div>\n");
+   printf("       </section>\n");
+   printf("    </div>\n");  // page
 
    // footer
    PRINT_PAGE_FOOTER();

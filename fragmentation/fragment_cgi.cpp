@@ -88,22 +88,18 @@ int main(int argc, char **argv)
 //       printf("\n#myStyledTable td { padding-left: 0.4rem; padding-right: 0.4rem; text-align: right; border: 1px solid; border-color: #ADD8E6; }\n");
 
    // header
-   PRINT_PAGE_HEADER("Peptide fragmentation",
-         "   <style>\n"
-         "      table {width: 1%; border: none}\n"
-         "      th, td {font-family:\"Courier New\", Courier, monospace; font-size: 11px; border: 1px solid #ADD8E6; padding-left: 0.4rem; padding-right: 0.4rem; text-align: right}\n"
-         "      th {background-color: #F0FFFF}\n"
-         "   </style>\n");
+   PRINT_PAGE_HEADER("Peptide fragmentation", NULL);
    printf("\n");
 
    printf("    <div id=\"page\" class=\"container\">\n");
    printf("       <section>\n");
    printf("          <header class=\"major\">\n");
    printf("             <h2>Peptide fragmentation</h2>\n");
+   printf("             <p class=\"lede\">Theoretical fragment ion masses for a peptide sequence, with optional fixed or user defined modifications.</p>\n");
    printf("          </header>\n");
 
 
-   printf("  <script language=\"javascript\">\n");
+   printf("  <script>\n");
    printf("     function pasteExample() {\n");
    printf("       document.getElementById('peptide').value='%s'\n", SAMPLEPEPTIDE);
    printf("     }\n");
@@ -144,60 +140,77 @@ int main(int argc, char **argv)
    }
 
    printf("\n");
-   printf("         <div id=\"left40entry\" style=\"line-height: normal\"><b>Enter sequence here:</b>\n");
-   printf("            &nbsp; &nbsp; &nbsp;<a onclick=\"clearExample();\"><u><font size=\"-2\">Clear sequence</font></u></a>\n");
-   printf("            &nbsp; &nbsp; &nbsp;<a onclick=\"pasteExample();\"><u><font size=\"-2\">Click here to paste in a sample peptide</font></u></a>\n");
-   printf("            <br><br><input type=\"text\" name=\"sequence\" id=\"peptide\" size=\"50\" value=\"");
+   printf("         <div class=\"form-grid\">\n");
+
+   // ---- left panel: sequence
+   printf("         <div class=\"panel\">\n");
+   printf("            <label class=\"field-label\" for=\"peptide\">Peptide sequence</label>\n");
+   printf("            <div class=\"actions\" style=\"margin-top: 0\">\n");
+   printf("               <input type=\"text\" name=\"sequence\" id=\"peptide\" class=\"mono\" size=\"32\" value=\"");
    print_html_encoded(szInputSequence);
    printf("\">\n");
-   printf("            &nbsp; <input type=\"submit\" value=\"Fragment!\">\n");
-   printf("            <br><font style=\"font-size: 10px\">Note that letters/residues B, J, X and Z have zero mass and can be used as a custom residue by specifying a modification mass for it. U is selenocysteine and O is pyrrolysine. ");
-   printf("            Also, all lower case letters (except for c, e, h, n, o, p, s which have elemental masses assigned to them) also have zero mass and be used as custom residues. For example, 2-Hydroxyproline is C5H9NO3 which has free amino acid mass of 131.058243 calculated using the <a href=\"https://proteomicsresource.washington.edu/cgi-bin/element.cgi\">Elemental Mass calculator</a>. Residue masses are required for this calculator so the mass would be 131.058423 - 18.01056 = 113.047863. Use the lower case 'v' to represent 2-Hydroxyproline in the peptide sequence and specify '113.047863@v' as a user defined modification. And if there is any extension that would be helpful in this fragmentation calculator, <a href=\"mailto:engj@uw.edu\" target=\"_blank\">let me know</a> and I just may implement it!</font>\n");
-
+   printf("               <input type=\"submit\" value=\"Fragment!\">\n");
+   printf("            </div>\n");
+   printf("            <div class=\"link-row\">\n");
+   printf("               <button type=\"button\" class=\"link-btn\" onclick=\"pasteExample();\">Paste a sample peptide</button>\n");
+   printf("               <button type=\"button\" class=\"link-btn\" onclick=\"clearExample();\">Clear sequence</button>\n");
+   printf("            </div>\n");
+   printf("            <details class=\"more\">\n");
+   printf("               <summary>Notes on custom residues</summary>\n");
+   printf("               <p class=\"hint\">Letters B, J, X and Z have zero mass and can be used as custom residues by specifying a modification mass for them. U is selenocysteine and O is pyrrolysine. ");
+   printf("All lower case letters (except c, e, h, n, o, p, s, which carry elemental masses) also have zero mass and can be used as custom residues.</p>\n");
+   printf("               <p class=\"hint\">For example, 2-hydroxyproline is C5H9NO3 with a free amino acid mass of 131.058243, calculated with the <a href=\"https://proteomicsresource.washington.edu/cgi-bin/element.cgi\">Elemental Mass calculator</a>. ");
+   printf("This calculator needs residue masses, so subtract water: 131.058243 - 18.01056 = 113.047683. Use lower case <code>v</code> for 2-hydroxyproline in the sequence and specify <code>113.047683@v</code> as a user defined modification.</p>\n");
+   printf("               <p class=\"hint\">If there is an extension that would be helpful in this calculator, <a href=\"mailto:engj@uw.edu\">let me know</a>.</p>\n");
+   printf("            </details>\n");
    printf("         </div>\n");
 
-   printf("<br>\n");
-   printf("         <div id=\"right60entry\" style=\"font-size: 12px\"><b>Set fragmentation parameters:</b>\n");
-// printf("            <font size=\"-1\"><br> &#149; mass type:\n");
-   printf("            <br> &#149; mass type:\n");
-   printf("            <input type=\"radio\" name=\"masstype\" value=\"1\"%s>mono\n", (iMassType==1?" checked":""));
-   printf("            <input type=\"radio\" name=\"masstype\" value=\"0\"%s>avg\n", (iMassType==0?" checked":""));
+   // ---- right panel: parameters
+   printf("         <div class=\"panel\">\n");
+   printf("            <fieldset class=\"options\">\n");
+   printf("               <legend>Mass type</legend>\n");
+   printf("               <div class=\"choice-row\">\n");
+   printf("                  <label><input type=\"radio\" name=\"masstype\" value=\"1\"%s>monoisotopic</label>\n", (iMassType==1?" checked":""));
+   printf("                  <label><input type=\"radio\" name=\"masstype\" value=\"0\"%s>average</label>\n", (iMassType==0?" checked":""));
+   printf("               </div>\n");
+   printf("            </fieldset>\n");
 
-   printf("            <br> &#149; product charge:\n");
+   printf("            <fieldset class=\"options\">\n");
+   printf("               <legend>Product ion charge</legend>\n");
+   printf("               <div class=\"choice-row\">\n");
    for (i=1; i<=MAX_CHARGE; i++)
-      printf("            <input type=\"radio\" name=\"chargestate\" value=\"%d\"%s>%d\n", i, (iCharge==i?" checked":""), i);
+      printf("                  <label><input type=\"radio\" name=\"chargestate\" value=\"%d\"%s>%d+</label>\n", i, (iCharge==i?" checked":""), i);
+   printf("               </div>\n");
+   printf("            </fieldset>\n");
 
-   printf("            <br> &#149; fragment ion type:\n");
-   printf("            <input type=\"checkbox\" name=\"ionseries\"  value=\"1\" %s>a\n", (iIonSeries&1?" checked":""));
-   printf("            <input type=\"checkbox\" name=\"ionseries\"  value=\"2\" %s>b\n", (iIonSeries&2?" checked":""));
-   printf("            <input type=\"checkbox\" name=\"ionseries\"  value=\"4\" %s>c\n", (iIonSeries&4?" checked":""));
-   printf("            <input type=\"checkbox\" name=\"ionseries\"  value=\"8\" %s>x\n", (iIonSeries&8?" checked":""));
-   printf("            <input type=\"checkbox\" name=\"ionseries\" value=\"16\" %s>y\n", (iIonSeries&16?" checked":""));
-   printf("            <input type=\"checkbox\" name=\"ionseries\" value=\"32\" %s>z\n", (iIonSeries&32?" checked":""));
-   printf("            <input type=\"checkbox\" name=\"ionseries\" value=\"64\" %s>z&#149;\n", (iIonSeries&64?" checked":""));
+   printf("            <fieldset class=\"options\">\n");
+   printf("               <legend>Fragment ion types</legend>\n");
+   printf("               <div class=\"choice-row\">\n");
+   printf("                  <label><input type=\"checkbox\" name=\"ionseries\" value=\"1\"%s>a</label>\n", (iIonSeries&1?" checked":""));
+   printf("                  <label><input type=\"checkbox\" name=\"ionseries\" value=\"2\"%s>b</label>\n", (iIonSeries&2?" checked":""));
+   printf("                  <label><input type=\"checkbox\" name=\"ionseries\" value=\"4\"%s>c</label>\n", (iIonSeries&4?" checked":""));
+   printf("                  <label><input type=\"checkbox\" name=\"ionseries\" value=\"8\"%s>x</label>\n", (iIonSeries&8?" checked":""));
+   printf("                  <label><input type=\"checkbox\" name=\"ionseries\" value=\"16\"%s>y</label>\n", (iIonSeries&16?" checked":""));
+   printf("                  <label><input type=\"checkbox\" name=\"ionseries\" value=\"32\"%s>z</label>\n", (iIonSeries&32?" checked":""));
+   printf("                  <label><input type=\"checkbox\" name=\"ionseries\" value=\"64\"%s>z&#149;</label>\n", (iIonSeries&64?" checked":""));
+   printf("               </div>\n");
+   printf("            </fieldset>\n");
 
-/*
-   printf("            <br>&#149; <input type=\"radio\" name=\"modified\"  value=\"1\" %s>\n", (bModified==1?" checked":""));
-   printf("            use heavy K(8.014199)/R (10.008269)\n");
-   printf("            <br>&#149; <input type=\"radio\" name=\"modified\"  value=\"2\" %s>\n", (bModified==2?" checked":""));
-   printf("            use heavy R (3.98814 mono, 3.9737 avg)\n");
-*/
-   printf("            <br>&#149; <input type=\"radio\" name=\"modified\"  value=\"0\" %s>\n", (bModified==0?" checked":""));
-   printf("            no mods\n");
-   printf("            <br>&#149; <input type=\"radio\" name=\"modified\"  value=\"3\" %s>\n", (bModified==3?" checked":""));
-   printf("            use carbamidomethyl C (57.021464 mono, 57.0513 avg))\n");
-   printf("            <br>&#149; <input type=\"radio\" name=\"modified\"  value=\"4\" %s>\n", (bModified==4?" checked":""));
-   printf("            user defined: <input type=\"text\" name=\"usermods\" size=\"90\" value=\"");
+   printf("            <fieldset class=\"options\">\n");
+   printf("               <legend>Modifications</legend>\n");
+   printf("               <div class=\"choice-col\">\n");
+   printf("                  <label><input type=\"radio\" name=\"modified\" value=\"0\"%s>None</label>\n", (bModified==0?" checked":""));
+   printf("                  <label><input type=\"radio\" name=\"modified\" value=\"3\"%s>Carbamidomethyl C (57.021464 mono, 57.0513 avg)</label>\n", (bModified==3?" checked":""));
+   printf("                  <label><input type=\"radio\" name=\"modified\" value=\"4\"%s>User defined: <input type=\"text\" name=\"usermods\" class=\"mono\" value=\"", (bModified==4?" checked":""));
    print_html_encoded(szUserMods);
-   printf("\" style=\"font-size: 12px;\">\n");
-   printf("            <br> &nbsp; &nbsp; #@AA or #@pos, i.e. \"15.995@M 57.0215@3\", space separated\n");
-   printf("            <br> &nbsp; &nbsp; for addition to N-term use '[' and for C-term use ']', e.g. \"16.0@[\"\n");
-
-   printf("            <p>\n");
-// printf("            </font><p>\n");
+   printf("\"></label>\n");
+   printf("                  <p class=\"hint\">Enter <code>mass@AA</code> or <code>mass@position</code>, space separated, e.g. <code>15.995@M 57.0215@3</code>. ");
+   printf("Use <code>[</code> for the N-terminus and <code>]</code> for the C-terminus, e.g. <code>16.0@[</code>.</p>\n");
+   printf("               </div>\n");
+   printf("            </fieldset>\n");
    printf("         </div>\n");
-   printf("\n");
 
+   printf("         </div>\n");  // form-grid
    printf("         </form>\n\n");
 
    printf("         <div id=\"results\">\n");
@@ -325,28 +338,28 @@ int main(int argc, char **argv)
          dBion = dNterm - pdMassAA['h'] + dProton;
          dYion = dPepMass;
 
-         printf("<center>\n");
-         printf("<table style='font-family:\"Courier New\", Courier, monospace; width: 1%%; font-size: 11px;'>\n");
+         printf("<div class=\"table-wrap\">\n");
+         printf("<table class=\"results\">\n");
          printf("<thead>");
          //printf("<tr align=\"center\">");
          printf("<tr>");
          if (iIonSeries&1)
-            printf("<th style='text-align: center'>a%s</th>", szCharge);
+            printf("<th class=\"center\">a%s</th>", szCharge);
          if (iIonSeries&2)
-            printf("<th style='text-align: center'>b%s</th>", szCharge);
+            printf("<th class=\"center\">b%s</th>", szCharge);
          if (iIonSeries&4)
-            printf("<th style='text-align: center'>c%s</th>", szCharge);
-         printf("<th></th>");
-         printf("<th></th>"); // AA
-         printf("<th></th>");
+            printf("<th class=\"center\">c%s</th>", szCharge);
+         printf("<th class=\"aa\">#</th>");
+         printf("<th class=\"aa\">AA</th>");
+         printf("<th class=\"aa\">#</th>");
          if (iIonSeries&8)
-            printf("<th style='text-align: center'>x%s</th>", szCharge);
+            printf("<th class=\"center\">x%s</th>", szCharge);
          if (iIonSeries&16)
-            printf("<th style='text-align: center'>y%s</th>", szCharge);
+            printf("<th class=\"center\">y%s</th>", szCharge);
          if (iIonSeries&32)
-            printf("<th style='text-align: center'>z%s</th>", szCharge);
+            printf("<th class=\"center\">z%s</th>", szCharge);
          if (iIonSeries&64)
-            printf("<th style='text-align: center'>z&#149;%s</th>", szCharge);
+            printf("<th class=\"center\">z&#149;%s</th>", szCharge);
          printf("</tr>");
          printf("</thead>\n");
          printf("<tbody>\n");
@@ -378,7 +391,7 @@ int main(int argc, char **argv)
             {
                if (i<iLenPeptide-1)
                {
-                  printf("<td>%0.6f</td>", (dAion + (iCharge-1)*dProton)/iCharge);
+                  printf("<td class=\"num\">%0.6f</td>", (dAion + (iCharge-1)*dProton)/iCharge);
                   vIons.push_back((dAion + (iCharge-1)*dProton)/iCharge);
                }
                else
@@ -390,7 +403,7 @@ int main(int argc, char **argv)
             {
                if (i<iLenPeptide-1)
                {
-                  printf("<td>%0.6f</td>", (dBion + (iCharge-1)*dProton)/iCharge);
+                  printf("<td class=\"num\">%0.6f</td>", (dBion + (iCharge-1)*dProton)/iCharge);
                   vIons.push_back((dBion + (iCharge-1)*dProton)/iCharge);
                }
                else
@@ -402,23 +415,23 @@ int main(int argc, char **argv)
             {
                if (i<iLenPeptide-1)
                {
-                  printf("<td>%0.6f</td>", (dCion + (iCharge-1)*dProton)/iCharge);
+                  printf("<td class=\"num\">%0.6f</td>", (dCion + (iCharge-1)*dProton)/iCharge);
                   vIons.push_back((dCion + (iCharge-1)*dProton)/iCharge);
                }
                else
                   printf("<td></td>");
             }
    
-            printf("<td style='text-align: center; background-color: #F0FFFF'>%d</td>", i+1);
-            printf("<td style='text-align: center; background-color: #F0FFFF'>%c</td>", szInputSequence[i]);
-            printf("<td style='text-align: center; background-color: #F0FFFF'>%d</td>", iLenPeptide - i);
+            printf("<td class=\"aa\">%d</td>", i+1);
+            printf("<td class=\"aa\">%c</td>", szInputSequence[i]);
+            printf("<td class=\"aa\">%d</td>", iLenPeptide - i);
       
             // print X-ions
             if (iIonSeries&8)
             {
                if (i>0)
                {
-                  printf("<td>%0.6f</td>", (dXion + (iCharge-1)*dProton)/iCharge);
+                  printf("<td class=\"num\">%0.6f</td>", (dXion + (iCharge-1)*dProton)/iCharge);
                   vIons.push_back((dXion + (iCharge-1)*dProton)/iCharge);
                }
                else
@@ -430,7 +443,7 @@ int main(int argc, char **argv)
             {
                if (i>0)
                {
-                  printf("<td>%0.6f</td>", (dYion + (iCharge-1)*dProton)/iCharge);
+                  printf("<td class=\"num\">%0.6f</td>", (dYion + (iCharge-1)*dProton)/iCharge);
                   vIons.push_back((dYion + (iCharge-1)*dProton)/iCharge);
                }
                else
@@ -442,7 +455,7 @@ int main(int argc, char **argv)
             {
                if (i>0)
                {
-                  printf("<td>%0.6f</td>", (dZion + (iCharge-1)*dProton)/iCharge);
+                  printf("<td class=\"num\">%0.6f</td>", (dZion + (iCharge-1)*dProton)/iCharge);
                   vIons.push_back((dZion + (iCharge-1)*dProton)/iCharge);
                }
                else
@@ -453,7 +466,7 @@ int main(int argc, char **argv)
             if (iIonSeries&64)
             {
                if (i>0)
-                  printf("<td>%0.6f</td>", (dZdotion + (iCharge-1)*dProton)/iCharge);
+                  printf("<td class=\"num\">%0.6f</td>", (dZdotion + (iCharge-1)*dProton)/iCharge);
                else
                   printf("<td></td>");
             }
@@ -463,9 +476,9 @@ int main(int argc, char **argv)
    
          printf("</tbody>\n");
          printf("</table>\n");
-   
-   
-         printf("<br style='line-height: normal'><pre><font style='font-family:\"Courier New\", Courier, monospace; font-size: 12px'>");
+         printf("</div>\n");
+
+         printf("<pre class=\"readout\">");
 
          iC=0;
          iH=0;
@@ -513,26 +526,24 @@ int main(int argc, char **argv)
             else
                printf("      +%d m/z: %12.6f\n", i, (dPepMass + (i-1)*dProton)/i);
          }
-         printf("</font></pre>\n");
-         printf("</center>\n");
+         printf("</pre>\n");
 
          sort(vIons.begin(), vIons.end());
 
-         printf("<div style=\"line-height: 8px\"><pre><font style='font-family:\"Courier New\", Courier, monospace; font-size: 8px; color: #AAAAAA'>\n");
-         printf("Peaks in MS2 format:\n\n");
+         printf("<details class=\"more\"><summary>Peaks in MS2 format</summary>\n");
+         printf("<pre>");
          printf("S 1 1 %0.4lf\n", dPepMass);
          printf("Z 1 %0.4f\n", dPepMass);
          for (auto x : vIons)
          {
             printf("%lf 100\n", x);
          }
-         printf("</font></pre></div>\n");
+         printf("</pre></details>\n");
       }
    }
-   printf("</div>\n");
-   printf("</div>\n"); //page
-   printf("</div>\n");
-   printf("</div>\n");
+   printf("</div>\n");  // results
+   printf("       </section>\n");
+   printf("    </div>\n");  // page
 
    // footer
    PRINT_PAGE_FOOTER();

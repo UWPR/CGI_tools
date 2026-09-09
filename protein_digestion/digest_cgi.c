@@ -85,12 +85,6 @@ int main(int argc, char **argv)
 
    // header
    PRINT_PAGE_HEADER("Protein digestion",
-         "   <style>\n"
-         "      table {width: 1%; border: none}\n"
-         "      th, td {font-family:\"Courier New\", Courier, monospace; font-size:90%; border: 1px solid #ADD8E6; padding-left: 0.4rem; padding-right: 0.4rem; text-align: center}\n"
-         "      th {background-color: #F0FFFF}\n"
-         "      a:link {text-decoration: none}\n"
-         "   </style>\n"
          "   <script>\n"
          "      // Minimal replacement for sorttable.js: click a <th> in a table.sortable to sort by that column.\n"
          "      document.addEventListener('DOMContentLoaded', function () {\n"
@@ -127,10 +121,11 @@ int main(int argc, char **argv)
    printf("       <section>\n");
    printf("          <header class=\"major\">\n");
    printf("             <h1>Protein digestion</h1>\n");
+   printf("             <p class=\"lede\">In-silico digestion of a protein sequence. Choose an enzyme or define a cleavage rule, paste the sequence, and get the resulting peptides with masses and pI values.</p>\n");
    printf("          </header>\n");
 
 
-   printf("  <script language=\"javascript\">\n");
+   printf("  <script>\n");
    printf("     function pasteExample() {\n");
    printf("       document.getElementById('protein').value='MASFRLFLLCLAGLVFVSEAGSVGAGEPKCPLMVKVLDAV \
 RGSPAANVGVKVFKKAADETWEPFASGKTSESGELHGLTT \
@@ -179,13 +174,32 @@ GPRHYTIAALLSPYSYSTTALVSSPKA'\n");
 
    {
       const char *szScriptName = getenv("SCRIPT_NAME");
-      printf("<form action=\"%s\" name=\"digestForm\" method=\"post\">", szScriptName ? szScriptName : "");
+      printf("<form action=\"%s\" name=\"digestForm\" method=\"post\">\n", szScriptName ? szScriptName : "");
    }
 
-   printf("<div id=\"left40entry\"><b>Select enzyme OR create own rule:</b><br>\n");
- 
-   printf("<input type=\"radio\" aria-label=\"select-enzyme\" name=\"whichinput\" id=\"whichinput\" value=\"0\"%s>\n", (iWhichInput==0?" checked":""));
-   printf("<select name=\"enzyme\" style=\"width: 420px\" onfocus=\"whichInput()\">\n");
+   printf("<div class=\"form-grid\">\n");
+
+   // ---- left panel: sequence
+   printf("<div class=\"panel\">\n");
+   printf("<label class=\"field-label\" for=\"protein\">Protein sequence</label>\n");
+   printf("<p class=\"hint\" style=\"margin: 0 0 .5rem\">Paste the sequence itself only, without a FASTA header line.</p>\n");
+   printf("<textarea name=\"sequence\" id=\"protein\" class=\"wide mono\" rows=\"8\">");
+   print_html_encoded(szInputSequence);
+   printf("</textarea>\n");
+   printf("<div class=\"link-row\">\n");
+   printf("<button type=\"button\" class=\"link-btn\" onclick=\"pasteExample();\">Paste a sample sequence</button>\n");
+   printf("<button type=\"button\" class=\"link-btn\" onclick=\"clearExample();\">Clear sequence</button>\n");
+   printf("</div>\n");
+   printf("<div class=\"actions\"><input type=\"submit\" aria-label=\"performdigest\" value=\"Digest!\"></div>\n");
+   printf("</div>\n");  // panel
+
+   // ---- right panel: enzyme and output settings
+   printf("<div class=\"panel\">\n");
+   printf("<fieldset class=\"options\">\n");
+   printf("<legend>Enzyme</legend>\n");
+   printf("<div class=\"choice-col\">\n");
+   printf("<label><input type=\"radio\" aria-label=\"select-enzyme\" name=\"whichinput\" id=\"whichinput\" value=\"0\"%s>Select an enzyme</label>\n", (iWhichInput==0?" checked":""));
+   printf("<select name=\"enzyme\" class=\"wide\" onfocus=\"whichInput()\">\n");
    iEnzymeSense=0;
    for (i=0; i<iNumEnzymes; i++)
    {
@@ -228,46 +242,45 @@ GPRHYTIAALLSPYSYSTTALVSSPKA'\n");
       iEnzymeSense = iCustomEnzymeSense;
    }
 
-   printf("<br><input type=\"radio\" aria-label=\"select-custom-enzyme\" name=\"whichinput\" id=\"whichinput2\" value=\"1\"%s>\n", (iWhichInput==1?" checked":""));
-   printf("cut:<input type=\"text\" aria-label=\"enzymecut\" name=\"enzymecut\" size=\"2\" value=\"");
+   printf("<label><input type=\"radio\" aria-label=\"select-custom-enzyme\" name=\"whichinput\" id=\"whichinput2\" value=\"1\"%s>Custom rule</label>\n", (iWhichInput==1?" checked":""));
+   printf("<div class=\"choice-row\" style=\"margin-left: 1.4rem\">\n");
+   printf("<label>cut &nbsp;<input type=\"text\" aria-label=\"enzymecut\" name=\"enzymecut\" class=\"short mono\" value=\"");
    print_html_encoded(szCustomEnzymeCut);
-   printf("\" onfocus=\"whichInput2()\"> ");
-   printf("nocut:<input type=\"text\" aria-label=\"enzymenocut\" name=\"enzymenocut\" size=\"1\" value=\"");
+   printf("\" onfocus=\"whichInput2()\"></label>\n");
+   printf("<label>no cut &nbsp;<input type=\"text\" aria-label=\"enzymenocut\" name=\"enzymenocut\" class=\"short mono\" value=\"");
    print_html_encoded(szCustomEnzymeNoCut);
-   printf("\"onfocus=\"whichInput2()\">\n");
-/*
-   printf("sense:<input type=\"radio\" name=\"enzymesense\" onfocus=\"whichInput2()\" value=\"0\"%s>n", (iCustomEnzymeSense==0?" checked":""));
-   printf("<input type=\"radio\" name=\"enzymesense\" onfocus=\"whichInput2()\" value=\"1\"%s>c\n", (iCustomEnzymeSense==1?" checked":""));
-*/
+   printf("\" onfocus=\"whichInput2()\"></label>\n");
+   printf("</div>\n");
+   printf("<p class=\"hint\">Residues after which to cleave, and residues that block cleavage when they follow. Use <code>-</code> for none.</p>\n");
+   printf("</div>\n");
+   printf("</fieldset>\n");
 
-   printf("<p><p><b>Output mass range:</b>\n");
-   printf("<input type=\"text\" aria-label=\"minmass\" name=\"minmass\" size=\"5\" value=\"%0.2f\">-", dMinMass);
-   printf("<input type=\"text\" aria-label=\"maxmass\" name=\"maxmass\" size=\"5\" value=\"%0.2f\">\n", dMaxMass);
+   printf("<div class=\"field-row\">\n");
+   printf("<div class=\"field\">\n");
+   printf("<span class=\"field-label\">Output mass range</span>\n");
+   printf("<input type=\"text\" aria-label=\"minmass\" name=\"minmass\" class=\"short mono\" value=\"%0.2f\"> &ndash; ", dMinMass);
+   printf("<input type=\"text\" aria-label=\"maxmass\" name=\"maxmass\" class=\"short mono\" value=\"%0.2f\">\n", dMaxMass);
+   printf("</div>\n");
 
-   printf("<br><b>Allowed missed cleavages:</b>\n");
-   printf("<select name=\"allowedmissed\" style=\"width: 40px\">\n");
+   printf("<div class=\"field\">\n");
+   printf("<label class=\"field-label\" for=\"allowedmissed\">Allowed missed cleavages</label>\n");
+   printf("<select name=\"allowedmissed\" id=\"allowedmissed\">\n");
    for (i=0; i<=5; i++)
       printf("   <option value=\"%d\"%s>%d\n", i, (iNumAllowedMissed==i?" selected":""), i);
    printf("</select>\n");
-
-   printf("<br><input type=\"radio\" aria-label=\"monomass\" name=\"masstype\" value=\"1\"%s>mono ",
-         (iMassType==1?" checked":""));
-   printf("<input type=\"radio\" aria-label=\"avgmass\" name=\"masstype\" value=\"0\"%s>avg masses<BR>",
-         (iMassType==0?" checked":""));
    printf("</div>\n");
+   printf("</div>\n");  // field-row
 
+   printf("<fieldset class=\"options\">\n");
+   printf("<legend>Mass type</legend>\n");
+   printf("<div class=\"choice-row\">\n");
+   printf("<label><input type=\"radio\" aria-label=\"monomass\" name=\"masstype\" value=\"1\"%s>monoisotopic</label>\n", (iMassType==1?" checked":""));
+   printf("<label><input type=\"radio\" aria-label=\"avgmass\" name=\"masstype\" value=\"0\"%s>average</label>\n", (iMassType==0?" checked":""));
+   printf("</div>\n");
+   printf("</fieldset>\n");
+   printf("</div>\n");  // panel
 
-   printf("<div id=\"right60entry\">\n");
-   printf("<b>Paste in protein sequence here (sequence itself only please):</b><br>\n");
-   printf("<textarea name=\"sequence\" rows=\"3\" cols=\"80\" wrap=\"virtual\" id=\"protein\">");
-   print_html_encoded(szInputSequence);
-   printf("</textarea>\n");
-   printf("<br><a onclick=\"pasteExample();\"><u><font size=\"-2\">Click here to paste in a sample sequence</font></u></a>\n");
-   printf(" &nbsp; &nbsp; &nbsp; <a onclick=\"clearExample();\"><u><font size=\"-2\">Clear sequence</font></u></a>\n");
-   printf("<br><input type=\"submit\" aria-label=\"performdigest\" value=\"Digest!\"><br>\n");
-
-   printf("</div>\n\n");
- 
+   printf("</div>\n");  // form-grid
    printf("</form>\n\n");
 
    printf("<div id=\"results\">\n");
@@ -320,19 +333,20 @@ GPRHYTIAALLSPYSYSTTALVSSPKA'\n");
 */
 
 
-      printf("<br><center><p style='font-family:\"Courier New\", Courier, monospace; font-size:90%%;'>Click on column headers to sort results. &#9830; is peptide fragmentation link.</p>\n");
+      printf("<p class=\"note\">Click on column headers to sort results. &#9830; links to the peptide fragmentation calculator.</p>\n");
 
-      printf("<table class=\"sortable\" cellpadding=\"4\">\n");
+      printf("<div class=\"table-wrap\">\n");
+      printf("<table class=\"results sortable\">\n");
       printf("<thead>");
       printf("<tr>");
-      printf("<th>start</th>");
-      printf("<th>end</th>");
-      printf("<th>len</th>");
-      printf("<th>neutral_mass</th>");
-      printf("<th>prevAA</th>");
+      printf("<th class=\"num\">start</th>");
+      printf("<th class=\"num\">end</th>");
+      printf("<th class=\"num\">len</th>");
+      printf("<th class=\"num\">neutral mass</th>");
+      printf("<th class=\"center\">prev</th>");
       printf("<th>peptide</th>");
-      printf("<th>nextAA</th>");
-      printf("<th>pI</th>");
+      printf("<th class=\"center\">next</th>");
+      printf("<th class=\"num\">pI</th>");
       printf("</tr>");
       printf("</thead>\n");
       printf("<tbody>\n");
@@ -352,31 +366,31 @@ GPRHYTIAALLSPYSYSTTALVSSPKA'\n");
          sscanf(szBuf, "%d %s %lf %c %s %c %d %d %lf\n",
                &iLen, szTmp, &dMass, &cPre, szPep, &cPost, &iStart, &iEnd, &dPI);
          printf("<tr>");
-         printf("<td>%d</td>", iStart+1);
-         printf("<td>%d</td>", iEnd+1);
-         printf("<td>%d</td>", iLen);
-         printf("<td style='text-align: right'>%0.6lf</td>", dMass - 1.00727646688);
-         printf("<td>%c</td>", cPre);
+         printf("<td class=\"num\">%d</td>", iStart+1);
+         printf("<td class=\"num\">%d</td>", iEnd+1);
+         printf("<td class=\"num\">%d</td>", iLen);
+         printf("<td class=\"num\">%0.6lf</td>", dMass - 1.00727646688);
+         printf("<td class=\"center\">%c</td>", cPre);
 
-         printf("<td style='text-align: left'>%s", szPep);
-         printf("<a href=\"/cgi-bin/fragment.cgi?sequence=%s\">&#9830;</a>", szPep);
+         printf("<td>%s", szPep);
+         printf(" <a href=\"/cgi-bin/fragment.cgi?sequence=%s\" title=\"Fragment this peptide\">&#9830;</a>", szPep);
          printf("</td>");
 
-         printf("<td>%c</td>", cPost);
-         printf("<td>%0.2lf</td>", dPI);
+         printf("<td class=\"center\">%c</td>", cPost);
+         printf("<td class=\"num\">%0.2lf</td>", dPI);
          printf("</tr>\n");
 
 //       printf("fget: %s<br>\n", szBuf);
       }
 
       printf("</tbody>\n");
-      printf("</table></center>\n");
+      printf("</table>\n</div>\n");
       pclose(fp);
    }
 
-   printf("</div>\n");
-   printf("</div>\n");
-   printf("</div>\n");
+   printf("</div>\n");  // results
+   printf("       </section>\n");
+   printf("    </div>\n");  // page
 
    // footer
    PRINT_PAGE_FOOTER();

@@ -79,10 +79,11 @@ int main(int argc, char **argv)
    printf("       <section>\n");
    printf("          <header class=\"major\">\n");
    printf("             <h2>Peptide Isotope Calculator</h2>\n");
+   printf("             <p class=\"lede\">Calculates the isotope distribution of a peptide using the <a href=\"http://www.kombyonyx.com/isotopes/\">Isotope Distribution Calculator</a> code by James Redman at Cardiff University, an algorithm modeled after <a href=\"https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/10.1002/jms.4498\">J. A. Yergey's procedure published in 1983</a>.</p>\n");
    printf("          </header>\n");
 
 
-   printf("  <script language=\"javascript\">\n");
+   printf("  <script>\n");
    printf("     function pasteExample() {\n");
    printf("       document.getElementById('peptide').value='%s'\n", SAMPLEPEPTIDE);
    printf("     }\n");
@@ -113,26 +114,28 @@ int main(int argc, char **argv)
       const char *szScriptName = getenv("SCRIPT_NAME");
       printf("         <form action=\"%s\" name=\"fragmentForm\" method=\"post\">\n", szScriptName ? szScriptName : "");
    }
-   printf("\n");
-   printf("         <div id=\"left40entry\">");
-   printf("         This program calculates the isotope distribution of peptides using");
-   printf("         the <a href=\"http://www.kombyonyx.com/isotopes/\">Isotope Distribution Calculator</a> code by James Redman at Cardiff Unversity.\n");
-   printf("         It is described as an algorithm modeled after <a href=\"https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/10.1002/jms.4498\">J. A. Yergey's procedure published in 1983</a>.\n");
-   printf("         </div>\n");
-   printf("         <p>\n");
-   printf("         <div id=\"left40entry\"><b>Enter sequence here:</b>\n");
-   printf("            <br> <a onclick=\"clearExample();\"><u><font size=\"-2\">Clear sequence</font></u></a>\n");
-   printf("            &nbsp; &nbsp; &nbsp;<a onclick=\"pasteExample();\"><u><font size=\"-2\">Click here to paste in a sample peptide</font></u></a>\n");
-   printf("            <br>peptide: <input type=\"text\" name=\"sequence\" id=\"peptide\" size=\"40\" value=\"");
+   printf("         <div class=\"panel\">\n");
+   printf("            <div class=\"field-row\">\n");
+   printf("            <div class=\"field\">\n");
+   printf("               <label class=\"field-label\" for=\"peptide\">Peptide sequence</label>\n");
+   printf("               <input type=\"text\" name=\"sequence\" id=\"peptide\" class=\"mono\" size=\"40\" value=\"");
    print_html_encoded(szInput);
    printf("\">\n");
-   printf("            <br>charge: <select name=\"charge\" id=\"charge\">\n");
+   printf("            </div>\n");
+   printf("            <div class=\"field\">\n");
+   printf("               <label class=\"field-label\" for=\"charge\">Precursor charge</label>\n");
+   printf("               <select name=\"charge\" id=\"charge\">\n");
    for (int z = 1; z <= 20; z++)
-      printf("               <option value=\"%d\"%s>%d</option>\n", z, (z == iCharge ? " selected" : ""), z);
-   printf("            </select> ... precursor charge state is used only in the calculation of m/z values\n");
-   printf("            <p><br>&nbsp; <input type=\"submit\" value=\"Calculate\">\n");
+      printf("                  <option value=\"%d\"%s>%d</option>\n", z, (z == iCharge ? " selected" : ""), z);
+   printf("               </select>\n");
+   printf("            </div>\n");
+   printf("            <input type=\"submit\" value=\"Calculate\">\n");
+   printf("            </div>\n");  // field-row
+   printf("            <div class=\"link-row\">\n");
+   printf("               <button type=\"button\" class=\"link-btn\" onclick=\"pasteExample();\">Paste a sample peptide</button>\n");
+   printf("               <button type=\"button\" class=\"link-btn\" onclick=\"clearExample();\">Clear sequence</button>\n");
+   printf("            </div>\n");
    printf("         </div>\n");
-   printf("\n");
    printf("         </form>\n\n");
 
    printf("         <div id=\"results\">\n");
@@ -212,14 +215,17 @@ int main(int argc, char **argv)
       double mass, abun;
       mycalc.GetNPeaks(npeaks);
 
-      printf("<p style='font-family: monospace; font-size:80%%'>\n");
-      printf("sequence: ");
+      printf("<dl class=\"summary\">\n");
+      printf("<dt>sequence</dt><dd>");
       print_html_encoded(szInput);
-      printf("\n");
-      printf("<br>composition:  %s\n", szComp);
+      printf("</dd>\n");
+      printf("<dt>composition</dt><dd>%s</dd>\n", szComp);
+      printf("</dl>\n");
 
-      printf("<table style='font-family: monospace; font-size:80%%; width:50%%'>\n");
-      printf("<tr><td>peak</td><td>m/z</td><td>relative abundance</td></tr>\n");
+      printf("<div class=\"table-wrap\">\n");
+      printf("<table class=\"results\">\n");
+      printf("<thead><tr><th>peak</th><th class=\"num\">m/z</th><th class=\"num\">relative abundance</th></tr></thead>\n");
+      printf("<tbody>\n");
 
       double dMaxAbundance = 0;
       for (int i = 0; i < npeaks; i++)
@@ -234,20 +240,20 @@ int main(int argc, char **argv)
 
          printf("<tr>\n");
          if (i==0)
-            printf("<td>Mono</td><td>%0.5f</td><td>%0.2f</td><br>", mass, 100.0 * abun / dMaxAbundance);
+            printf("<td>Mono</td><td class=\"num\">%0.5f</td><td class=\"num\">%0.2f</td>", mass, 100.0 * abun / dMaxAbundance);
          else
-            printf("<td>M+%d</td><td>%0.5f</td><td>%0.2f</td>", i,  mass, 100.0 * abun / dMaxAbundance);
+            printf("<td>M+%d</td><td class=\"num\">%0.5f</td><td class=\"num\">%0.2f</td>", i,  mass, 100.0 * abun / dMaxAbundance);
 
          vLabel.push_back(mass);
          vAbun.push_back(100.0 * abun / dMaxAbundance);
 
          printf("</tr>\n");
       }
-      printf("</table>\n\n");
+      printf("</tbody>\n</table>\n</div>\n\n");
 
 
       // https://www.chartjs.org/docs/latest/getting-started/
-      printf("   <div class=\"chart-container\" style=\"width:600px\"><canvas id=\"myChart\"></canvas></div>\n");
+      printf("   <div class=\"chart-container\"><canvas id=\"myChart\"></canvas></div>\n");
       printf("<script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>\
 <script>\n\
   const ctx = document.getElementById('myChart');\n\
@@ -266,6 +272,7 @@ int main(int argc, char **argv)
       printf("],\n\
       datasets: [{\n\
         label: 'relative isotope distribution',\n\
+        backgroundColor: '#4b2e83',\n\
         data: [");
 
       for (auto it=vAbun.begin(); it!=vAbun.end(); ++it)
@@ -290,6 +297,9 @@ int main(int argc, char **argv)
 </script>\n");
 
    }
+   printf("</div>\n");  // results
+   printf("       </section>\n");
+   printf("    </div>\n");  // page
 
    // footer
    PRINT_PAGE_FOOTER();
