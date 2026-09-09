@@ -473,7 +473,7 @@ void EXTRACT_QUERY_STRING(char *szInputSequence,
             if (!strcmp(szWord, "sequence") )
             {
                getword(szWord, szQuery, '&'); plustospace(szWord); unescape_url(szWord);
-               if (strlen(szWord)>MAX_SEQUENCE)
+               if (strlen(szWord)>=MAX_SEQUENCE)
                {
                   printf(" Error - input string is greater than %d characters.\n", MAX_SEQUENCE);
                   break;

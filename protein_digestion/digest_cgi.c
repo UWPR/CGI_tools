@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
 #include "cgi-page.h"
 
 /* HTML-encode a string to stdout, escaping chars that are special in HTML attributes/content. */
@@ -18,6 +19,19 @@ static void print_html_encoded(const char *s)
          case '\'': fputs("&#39;",  stdout); break;
          default:   fputc(*s, stdout);       break;
       }
+   }
+}
+
+/* URL-encode a string to stdout (RFC 3986 unreserved chars pass through). */
+static void print_url_encoded(const char *s)
+{
+   for (; *s; s++)
+   {
+      unsigned char c = (unsigned char)*s;
+      if (isalnum(c) || c=='-' || c=='_' || c=='.' || c=='~')
+         fputc(c, stdout);
+      else
+         printf("%%%02X", c);
    }
 }
 
@@ -291,18 +305,26 @@ GPRHYTIAALLSPYSYSTTALVSSPKA'\n");
       char szTmpFile[512];
       char szBuf[5000];
 
-      for (i=0; i<(int)strlen(szInputSequence); i++)
-         szInputSequence[i]=toupper(szInputSequence[i]);
-
-      sprintf(szTmpFile, "/tmp/digestdb.fasta");
-//    sprintf(szTmpFile, "/net/pr/vol3/software/digestdb.fasta");
-      if ( (fp=fopen(szTmpFile, "w"))==NULL)
       {
-         printf(" Error writing tmp db\n");
-         exit(EXIT_FAILURE);
+         int iSeqLen = (int)strlen(szInputSequence);
+         int iw = 0;
+         for (i=0; i<iSeqLen; i++)
+            if (isalpha((unsigned char)szInputSequence[i]))
+               szInputSequence[iw++] = toupper((unsigned char)szInputSequence[i]);
+         szInputSequence[iw] = '\0';
       }
-      fprintf(fp, ">seq\n%s", szInputSequence);
-      fclose(fp);
+
+      {
+         int iFd;
+         strcpy(szTmpFile, "/tmp/digestdb_XXXXXX");
+         if ((iFd = mkstemp(szTmpFile)) < 0 || (fp = fdopen(iFd, "w")) == NULL)
+         {
+            printf(" Error writing tmp db\n");
+            exit(EXIT_FAILURE);
+         }
+         fprintf(fp, ">seq\n%s", szInputSequence);
+         fclose(fp);
+      }
 
 //    sprintf(szCommand, "/usr/bin/rm -f %s.out", szTmpFile);
 //    system(szCommand);
@@ -372,8 +394,11 @@ GPRHYTIAALLSPYSYSTTALVSSPKA'\n");
          printf("<td class=\"num\">%0.6lf</td>", dMass - 1.00727646688);
          printf("<td class=\"center\">%c</td>", cPre);
 
-         printf("<td>%s", szPep);
-         printf(" <a href=\"/cgi-bin/fragment.cgi?sequence=%s\" title=\"Fragment this peptide\">&#9830;</a>", szPep);
+         printf("<td>");
+         print_html_encoded(szPep);
+         printf(" <a href=\"/cgi-bin/fragment.cgi?sequence=");
+         print_url_encoded(szPep);
+         printf("\" title=\"Fragment this peptide\">&#9830;</a>");
          printf("</td>");
 
          printf("<td class=\"center\">%c</td>", cPost);
@@ -386,6 +411,7 @@ GPRHYTIAALLSPYSYSTTALVSSPKA'\n");
       printf("</tbody>\n");
       printf("</table>\n</div>\n");
       pclose(fp);
+      unlink(szTmpFile);
    }
 
    printf("</div>\n");  // results

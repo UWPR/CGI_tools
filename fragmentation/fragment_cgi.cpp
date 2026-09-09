@@ -255,7 +255,7 @@ int main(int argc, char **argv)
             if (!pStr) { tok = strtok(NULL, " "); continue; }
             *pStr = ' ';
 
-            sscanf(tok, "%lf %s", &dMass, szResidue);
+            sscanf(tok, "%lf %99s", &dMass, szResidue);
 
             // first check if residue or number is entered
             if (strspn(szResidue, "0123456789")==strlen(szResidue))
@@ -263,7 +263,7 @@ int main(int argc, char **argv)
                int iPos=0;
 
                sscanf(szResidue, "%d", &iPos);
-               if (iPos>=1)
+               if (iPos>=1 && iPos<=MAX_SEQUENCE)
                   pdPositionMod[iPos-1] = dMass;
             }
             else
@@ -616,7 +616,7 @@ void EXTRACT_QUERY_STRING(char *szInputSequence,
             if (!strcmp(szWord, "sequence") )
             {
                getword(szWord, szQuery, '&'); plustospace(szWord); unescape_url(szWord);
-               if (strlen(szWord)>MAX_SEQUENCE)
+               if (strlen(szWord)>=MAX_SEQUENCE)
                {
                   printf(" Error - input string is greater than %d characters.\n", MAX_SEQUENCE);
                   *bRunCalculator = 0;
