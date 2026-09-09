@@ -72,7 +72,15 @@ int main(int argc, char **argv)
 
 
    // header
-   PRINT_PAGE_HEADER("Peptide Isotope Calculator", NULL);
+   // results layout: summary + table on the left, bar chart on the right
+   PRINT_PAGE_HEADER("Peptide Isotope Calculator",
+      "   <style>\n"
+      "      .results-grid { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 1.25rem 2.5rem; }\n"
+      "      .results-grid .results-data { flex: 0 1 auto; }\n"
+      "      .results-grid .chart-container { flex: 1 1 360px; max-width: 640px; margin-top: 0; }\n"
+      "      .chart-controls { display: flex; align-items: center; gap: .6rem; margin-top: .75rem; font-size: .88rem; color: var(--muted); }\n"
+      "      .chart-controls label { font-weight: 600; }\n"
+      "   </style>\n");
    printf("\n");
 
    printf("    <div id=\"page\" class=\"container\">\n");
@@ -215,6 +223,8 @@ int main(int argc, char **argv)
       double mass, abun;
       mycalc.GetNPeaks(npeaks);
 
+      printf("<div class=\"results-grid\">\n");
+      printf("<div class=\"results-data\">\n");
       printf("<dl class=\"summary\">\n");
       printf("<dt>sequence</dt><dd>");
       print_html_encoded(szInput);
@@ -249,51 +259,130 @@ int main(int argc, char **argv)
 
          printf("</tr>\n");
       }
-      printf("</tbody>\n</table>\n</div>\n\n");
+      printf("</tbody>\n</table>\n</div>\n");
+      printf("</div>\n\n");  // results-data
 
 
+      // Profile-mode rendering of the centroid distribution: each isotope peak
+      // becomes a Gaussian whose width follows the chosen resolving power
+      // (FWHM = m/z / R), the Gaussians are summed on a fine m/z grid, and the
+      // trace is drawn as a filled line with Chart.js.
       // https://www.chartjs.org/docs/latest/getting-started/
-      printf("   <div class=\"chart-container\"><canvas id=\"myChart\"></canvas></div>\n");
-      printf("<script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>\
-<script>\n\
-  const ctx = document.getElementById('myChart');\n\
-  new Chart(ctx, {\n\
-    type: 'bar',\n\
-    data: {\n\
-      labels: [");
+      printf("   <div class=\"chart-container\">\n");
+      printf("      <canvas id=\"myChart\"></canvas>\n");
+      printf("      <div class=\"chart-controls\">\n");
+      printf("         <label for=\"resolution\">Resolving power</label>\n");
+      printf("         <select id=\"resolution\" onchange=\"drawSpectrum()\">\n");
+      printf("            <option value=\"1000\">1,000</option>\n");
+      printf("            <option value=\"5000\">5,000</option>\n");
+      printf("            <option value=\"10000\" selected>10,000</option>\n");
+      printf("            <option value=\"30000\">30,000</option>\n");
+      printf("            <option value=\"100000\">100,000</option>\n");
+      printf("         </select>\n");
+      printf("      </div>\n");
+      printf("   </div>\n");
+      printf("</div>\n");  // results-grid
+      printf("<script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>\n");
+      printf("<script>\n");
 
+      printf("  var peakMz = [");
       for (auto it=vLabel.begin(); it!=vLabel.end(); ++it)
       {
          if (it != vLabel.begin())
             printf(", ");
-         printf("'%0.4lf'", (*it));
+         printf("%0.5lf", (*it));
       }
+      printf("];\n");
 
-      printf("],\n\
-      datasets: [{\n\
-        label: 'relative isotope distribution',\n\
-        backgroundColor: '#4b2e83',\n\
-        data: [");
-
+      printf("  var peakAbun = [");
       for (auto it=vAbun.begin(); it!=vAbun.end(); ++it)
       {
          if (it != vAbun.begin())
             printf(", ");
-         printf("'%0.4lf'", (*it));
+         printf("%0.4lf", (*it));
       }
+      printf("];\n");
 
-      printf("],\n        borderWidth: 1\n\
-      }]\n\
-    },\n\
-    options: {\n\
-      scales: {\n\
-        y: { beginAtZero: true, grid: { display:false }  },\n\
-        x: { display: true, text: 'm/z',  grid: { display:false }},\n\
-      },\n\
-      barThickness: 5,\n\
-      plugins: { legend: { display: false } }\n\
+      printf("\
+  var spectrumChart = null;\n\
+  function profileTrace(resolvingPower) {\n\
+    var n = peakMz.length;\n\
+    var lo = peakMz[0], hi = peakMz[n - 1];\n\
+    var sigmaMax = 0, sigmaMin = Infinity, i, j;\n\
+    for (i = 0; i < n; i++) {\n\
+      var s = (peakMz[i] / resolvingPower) / 2.3548;   /* FWHM -> sigma */\n\
+      if (s > sigmaMax) sigmaMax = s;\n\
+      if (s < sigmaMin) sigmaMin = s;\n\
     }\n\
-  });\n\
+    var spacing = (n > 1) ? (peakMz[1] - peakMz[0]) : 1.0;\n\
+    var pad = Math.max(0.6 * spacing, 4 * sigmaMax);\n\
+    var xmin = lo - pad, xmax = hi + pad;\n\
+    /* sample finely enough that even narrow peaks are drawn smoothly */\n\
+    var steps = Math.min(20000, Math.max(1500, Math.ceil((xmax - xmin) / (sigmaMin / 4))));\n\
+    var dx = (xmax - xmin) / steps;\n\
+    var pts = [], ymax = 0;\n\
+    for (i = 0; i <= steps; i++) {\n\
+      var x = xmin + i * dx, y = 0;\n\
+      for (j = 0; j < n; j++) {\n\
+        var sig = (peakMz[j] / resolvingPower) / 2.3548;\n\
+        var d = (x - peakMz[j]) / sig;\n\
+        if (d > -6 && d < 6) y += peakAbun[j] * Math.exp(-0.5 * d * d);\n\
+      }\n\
+      if (y > ymax) ymax = y;\n\
+      pts.push({ x: x, y: y });\n\
+    }\n\
+    if (ymax > 0) for (i = 0; i < pts.length; i++) pts[i].y = 100 * pts[i].y / ymax;\n\
+    return pts;\n\
+  }\n\
+  function drawSpectrum() {\n\
+    var R = parseFloat(document.getElementById('resolution').value);\n\
+    var pts = profileTrace(R);\n\
+    if (spectrumChart) {\n\
+      spectrumChart.data.datasets[0].data = pts;\n\
+      spectrumChart.options.scales.x.min = pts[0].x;\n\
+      spectrumChart.options.scales.x.max = pts[pts.length - 1].x;\n\
+      spectrumChart.update();\n\
+      return;\n\
+    }\n\
+    var ctx = document.getElementById('myChart');\n\
+    spectrumChart = new Chart(ctx, {\n\
+      type: 'line',\n\
+      data: {\n\
+        datasets: [{\n\
+          label: 'relative intensity',\n\
+          data: pts,\n\
+          borderColor: '#4b2e83',\n\
+          backgroundColor: 'rgba(75,46,131,0.12)',\n\
+          borderWidth: 1.5,\n\
+          fill: 'origin',\n\
+          pointRadius: 0,\n\
+          tension: 0\n\
+        }]\n\
+      },\n\
+      options: {\n\
+        animation: false,\n\
+        aspectRatio: 1.6,\n\
+        interaction: { mode: 'nearest', axis: 'x', intersect: false },\n\
+        scales: {\n\
+          x: { type: 'linear', min: pts[0].x, max: pts[pts.length - 1].x,\n\
+               title: { display: true, text: 'm/z' },\n\
+               grid: { display: false },\n\
+               ticks: { maxTicksLimit: 8, callback: function (v) { return Number(v).toFixed(2); } } },\n\
+          y: { beginAtZero: true, max: 105,\n\
+               title: { display: true, text: 'relative intensity' },\n\
+               grid: { display: false },\n\
+               ticks: { stepSize: 25 } }\n\
+        },\n\
+        plugins: {\n\
+          legend: { display: false },\n\
+          tooltip: { callbacks: {\n\
+            title: function (items) { return 'm/z ' + items[0].parsed.x.toFixed(4); },\n\
+            label: function (item) { return item.parsed.y.toFixed(1); } } }\n\
+        }\n\
+      }\n\
+    });\n\
+  }\n\
+  drawSpectrum();\n\
 </script>\n");
 
    }

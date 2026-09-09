@@ -965,13 +965,13 @@ void testCgiIntegration() {
         auto out = runGet();
         checkContains(out, "Content-Type: text/html",  "GET: HTML content type");
         checkContains(out, "<!DOCTYPE html>",          "GET: HTML doctype");
-        checkContains(out, "MotifHunter",              "GET: page title");
+        checkContains(out, "Motif search",             "GET: page title");
         checkContains(out, "<form",                    "GET: form present");
         checkContains(out, "name=\"motif\"",           "GET: motif input present");
         checkContains(out, "name=\"fasta_file\"",      "GET: file input present");
         checkContains(out, "name=\"fasta_text\"",      "GET: textarea present");
         checkNotContains(out, "role=\"alert\"",          "GET: no errors on blank page");
-        checkContains(out, "Skip to main content",     "GET: skip link (accessibility)");
+        checkContains(out, "<main>",                   "GET: main landmark present");
         checkContains(out, "lang=\"en\"",              "GET: language attribute set");
     }
 
@@ -1001,7 +1001,7 @@ void testCgiIntegration() {
         auto out = runPostUrlEncoded(body);
         checkContains(out, "stat-val\">1<", "pasted: 1 protein scanned");
         checkContains(out, "hit-card",      "pasted: hit found");
-        checkContains(out, "hit-pos-cell\">6<", "pasted: RGD at position 6");
+        checkContains(out, "num pos\">6<",  "pasted: RGD at position 6");
     }
 
     // POST: no hits found
@@ -1198,10 +1198,10 @@ void testCgiIntegration() {
         checkContains(out, "aria-live",            "a11y: aria-live regions present");
         checkContains(out, "<fieldset",            "a11y: fieldset for form grouping");
         checkContains(out, "<legend",              "a11y: legend for fieldset");
-        checkContains(out, "role=\"banner\"",      "a11y: header landmark");
-        checkContains(out, "role=\"contentinfo\"", "a11y: footer landmark");
-        checkContains(out, "id=\"main-content\"",  "a11y: main content anchor for skip link");
-        checkContains(out, "prefers-reduced-motion", "a11y: reduced motion media query");
+        checkContains(out, "id=\"header\"",        "a11y: page header present");
+        checkContains(out, "<footer",              "a11y: footer landmark");
+        checkContains(out, "<main>",               "a11y: main landmark");
+        checkContains(out, "focus-visible",        "a11y: visible focus styling");
     }
 }
 

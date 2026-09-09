@@ -12,7 +12,7 @@ CXXFLAGS = -std=c++17 -O2 -Wall -Wextra
 
 all: motif_search.cgi
 
-motif_search.cgi: motif_search.cpp
+motif_search.cgi: motif_search.cpp cgi-page.h
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
 motif_search_tests: motif_search_tests.cpp motif_search.cgi

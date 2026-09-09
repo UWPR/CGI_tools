@@ -2,6 +2,8 @@
  *
  *  Compile:
  *      g++ -std=c++17 -O2 -o motif_search.cgi motif_search.cpp
+ *      (needs cgi-page.h, the page header/stylesheet shared with the other
+ *      UWPR CGI tools, in the same directory)
  *
  *  Deploy:
  *      cp motif_search.cgi /usr/lib/cgi-bin/
@@ -32,6 +34,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include "cgi-page.h"   // shared UWPR page chrome and stylesheet
 
 /* ──────────────────────────────────────────────────────────────
    CONFIGURATION
@@ -457,8 +461,7 @@ void printHeaders(const std::string& ct = "text/html; charset=utf-8") {
               << "X-Frame-Options: DENY\r\n"
               << "Referrer-Policy: strict-origin-when-cross-origin\r\n"
               << "Content-Security-Policy: default-src 'self'; "
-                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-                 "font-src https://fonts.gstatic.com; "
+                 "style-src 'self' 'unsafe-inline'; "
                  "script-src 'unsafe-inline'; "
                  "frame-ancestors 'none'\r\n"
               << "\r\n";
@@ -477,178 +480,54 @@ void printDownloadHeaders(const std::string& filename) {
 
 /* ──────────────────────────────────────────────────────────────
    HTML PAGE SECTIONS
+
+   The page chrome (top bar, card, footer) and the shared stylesheet
+   come from cgi-page.h, the same header used by the other UWPR CGI
+   tools.  Only the few motif-specific rules live here.
    ────────────────────────────────────────────────────────────── */
 
-void printPageHead() {
-    std::cout <<
-R"(<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MotifHunter &#8212; Protein Sequence Search</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@0,400;0,600;1,400&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-  /*
-   * WCAG 2.1 AA — contrast ratios verified (minimum 4.5:1 for text)
-   *   --text     #1a1a1a  16.75:1 on white
-   *   --text-sub #4a4a4a   9.73:1 on white
-   *   --label    #3d3d3d  11.27:1 on white
-   *   --accent   #005f99   7.23:1 on white
-   *   --accent-dk#004570   9.87:1 on white
-   *   btn: white on #005f99 = 7.23:1
-   *   error: #7a1010 on #fff4f4 = 8.59:1
-   *   wc:   #8b4500 on #fff8f0 = 6.11:1
-   */
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  :root{
-    --bg:#f5f7fa; --surface:#ffffff; --surface2:#f0f4f8;
-    --border:#b0bec8; --border-dark:#7a909e;
-    --text:#1a1a1a; --text-sub:#4a4a4a; --label:#3d3d3d;
-    --accent:#005f99; --accent-dk:#004570; --accent-bg:#e8f2fa;
-    --btn-bg:#005f99; --btn-hover:#004570; --btn-text:#ffffff;
-    --error-bg:#fff4f4; --error-border:#c0392b; --error-text:#7a1010;
-    --hit-border:#005f99; --hit-bg:#f8fbff;
-    --wc-bg:#fff8f0; --wc-text:#8b4500; --pos-color:#4a4a4a;
-    --radius:8px;
-    --mono:'Source Code Pro','Courier New',monospace;
-    --sans:'Source Sans 3',Arial,sans-serif;
-    --focus-ring:0 0 0 3px #005f99,0 0 0 5px #ffffff;
-  }
-  /* Skip link (WCAG 2.4.1) */
-  .skip-link{position:absolute;top:-100%;left:1rem;background:var(--accent);
-    color:#fff;padding:.6em 1.2em;border-radius:0 0 var(--radius) var(--radius);
-    font-family:var(--sans);font-weight:700;font-size:.95rem;z-index:9999;
-    text-decoration:none;transition:top .1s}
-  .skip-link:focus{top:0;outline:3px solid #fff;outline-offset:2px}
-  /* Focus (WCAG 2.4.7) */
-  :focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:3px}
-  :focus:not(:focus-visible){outline:none}
-  @media(prefers-reduced-motion:reduce){
-    *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
-  html{scroll-behavior:smooth}
-  body{background:var(--bg);color:var(--text);font-family:var(--sans);
-       font-size:1rem;line-height:1.6;min-height:100vh}
-  /* Header */
-  header{background:var(--surface);border-bottom:2px solid var(--border);
-         padding:2rem 2rem 1.75rem;text-align:center}
-  .logo-mark{display:inline-block;font-family:var(--mono);font-size:.75rem;
-    font-weight:600;letter-spacing:.18em;color:var(--accent);background:var(--accent-bg);
-    border:1px solid #aacde8;border-radius:4px;padding:.25em .8em;
-    margin-bottom:.9rem;text-transform:uppercase}
-  h1{font-size:clamp(1.75rem,4vw,2.6rem);font-weight:700;line-height:1.15;color:var(--text)}
-  h1 .brand-accent{color:var(--accent)}
-  .subtitle{margin-top:.6rem;color:var(--text-sub);font-size:.95rem}
-  /* Layout */
-  .container{max-width:860px;margin:0 auto;padding:2rem 1.5rem 4rem}
-  /* Fieldset */
-  fieldset{background:var(--surface);border:1px solid var(--border);
-           border-radius:var(--radius);padding:1.75rem 2rem;margin-bottom:1.5rem}
-  fieldset:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
-  legend{font-family:var(--mono);font-size:.78rem;font-weight:600;letter-spacing:.12em;
-         text-transform:uppercase;color:var(--accent);padding:0 .5em}
-  label{display:block;font-size:.9rem;font-weight:600;color:var(--label);margin-bottom:.35rem}
-  .field-hint{font-size:.82rem;color:var(--text-sub);margin-top:.3rem;margin-bottom:.75rem}
-  input[type="text"],textarea{
-    width:100%;background:var(--surface);border:2px solid var(--border-dark);
-    border-radius:var(--radius);color:var(--text);font-family:var(--mono);
-    padding:.6rem .9rem;outline:none;transition:border-color .15s}
-  input[type="text"]:focus,textarea:focus{
-    border-color:var(--accent);box-shadow:var(--focus-ring)}
-  input[type="text"]{font-size:1.4rem;letter-spacing:.12em;text-transform:uppercase}
-  textarea{font-size:.875rem;line-height:1.7;resize:vertical;min-height:180px}
-  /* OR divider */
-  .or-divider{display:flex;align-items:center;gap:.75rem;margin:1.25rem 0;
-    font-size:.8rem;font-weight:600;color:var(--text-sub);
-    text-transform:uppercase;letter-spacing:.1em}
-  .or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--border)}
-  /* File zone */
-  .file-zone{border:2px dashed var(--border-dark);border-radius:var(--radius);
-    padding:1.5rem;text-align:center;position:relative;
-    transition:border-color .15s,background .15s;background:var(--surface2)}
-  .file-zone:hover{border-color:var(--accent);background:var(--accent-bg)}
-  .file-zone.drag-over{border-color:var(--accent-dk);background:#d0e8f7;outline:3px solid var(--accent)}
-  .file-zone input[type="file"]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
-  .file-zone-inner{pointer-events:none}
-  .file-icon{font-size:2rem;display:block;margin-bottom:.4rem}
-  .file-zone p{font-size:.85rem;color:var(--text-sub);margin:.2rem 0}
-  .file-zone strong{color:var(--accent)}
-  #file-name-display{margin-top:.6rem;font-family:var(--mono);font-size:.82rem;
-    font-weight:600;color:#1a6e3c;min-height:1.3em}
-  /* Buttons */
-  .btn-search{display:block;width:100%;padding:.9rem 1rem;background:var(--btn-bg);
-    color:var(--btn-text);font-family:var(--sans);font-weight:700;font-size:1.05rem;
-    border:2px solid var(--btn-bg);border-radius:var(--radius);cursor:pointer;
-    margin-top:.5rem;min-height:44px;transition:background .15s,border-color .15s}
-  .btn-search:hover{background:var(--btn-hover);border-color:var(--btn-hover)}
-  .btn-group{display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-start}
-  .btn-download{background:#fff;border:2px solid var(--accent);color:var(--accent);
-    font-family:var(--sans);font-size:.875rem;font-weight:600;padding:.45em 1.1em;
-    border-radius:var(--radius);cursor:pointer;min-height:44px;transition:background .15s;
-    text-align:center;line-height:1.3}
-  .btn-download:hover{background:var(--accent-bg)}
-  .btn-download small{display:block;font-size:.75rem;font-weight:400;
-    opacity:.85;margin-top:.15em}
-  /* Error alert */
-  .error-box{background:var(--error-bg);border:2px solid var(--error-border);
-    border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.5rem;
-    font-size:.9rem;color:var(--error-text)}
-  .error-box ul{padding-left:1.4em}
-  .error-box li{margin:.3em 0}
-  .error-box-title{font-weight:700;margin-bottom:.4rem;font-size:.95rem}
-  /* Stats bar */
-  .stats-bar{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.5rem}
-  .stat-pill{background:var(--surface2);border:1px solid var(--border);
-    border-radius:999px;padding:.35em 1em;font-size:.82rem;color:var(--text-sub);
-    display:flex;gap:.4em;align-items:center}
-  .stat-pill .stat-val{font-weight:700;color:var(--accent)}
-  .stat-pill.highlight{border-color:var(--accent);background:var(--accent-bg)}
-  /* Results */
-  .results-header{display:flex;justify-content:space-between;align-items:center;
-    margin-bottom:1rem;flex-wrap:wrap;gap:.75rem}
-  .results-heading{font-size:1.1rem;font-weight:700;color:var(--text)}
-  .hit-card{background:var(--hit-bg);border:1px solid var(--border);
-    border-left:4px solid var(--hit-border);border-radius:var(--radius);
-    padding:1rem 1.25rem;margin-bottom:1rem;animation:fadeSlide .25s ease both}
-  @keyframes fadeSlide{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-  .hit-desc{font-family:var(--mono);font-size:.82rem;font-weight:600;
-    color:var(--accent);margin-bottom:.7rem;word-break:break-all}
-  .hit-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.85rem}
-  .hit-table th{text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;
-    letter-spacing:.08em;color:var(--text-sub);border-bottom:1px solid var(--border);
-    padding:.25em .6em .25em 0}
-  .hit-table td{padding:.3em .6em .3em 0;border-bottom:1px solid #e0e8f0;
-    color:var(--text);vertical-align:baseline}
-  .hit-table tr:last-child td{border-bottom:none}
-  .hit-pos-cell{white-space:nowrap;color:var(--pos-color);width:7rem}
-  /* Wildcard highlight: background + italic + dotted underline (not colour alone — WCAG 1.4.1) */
-  .wc{background:var(--wc-bg);color:var(--wc-text);border-radius:2px;
-    padding:0 .1em;font-style:italic;font-weight:600;text-decoration:underline dotted}
-  .no-hits{text-align:center;padding:3rem;color:var(--text-sub);font-size:.95rem;
-    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
-  .no-hits .no-hits-icon{font-size:2.2rem;display:block;margin-bottom:.75rem}
-  footer{text-align:center;padding:1.75rem 2rem;font-size:.8rem;
-    color:var(--text-sub);border-top:1px solid var(--border);background:var(--surface)}
-  @media(max-width:560px){fieldset{padding:1.25rem}h1{font-size:1.6rem}}
-</style>
-</head>
-<body>
-)";
-}
+static const char* g_szMotifCSS =
+"   <style>\n"
+"      /* motif search additions to the shared stylesheet */\n"
+"      .error-box { background: #fdf3f3; border: 1px solid #e3b4b4; border-left: 4px solid #b23a3a; border-radius: var(--radius); padding: .9rem 1.1rem; margin: 0 0 1.5rem; color: #7a1010; font-size: .92rem; }\n"
+"      .error-box p { margin: 0 0 .3rem; font-weight: 600; }\n"
+"      .error-box ul { margin: 0; padding-left: 1.3em; }\n"
+"      input[type=text].motif { width: 100%; max-width: 20rem; font-size: 1.15rem; letter-spacing: .12em; text-transform: uppercase; }\n"
+"      input[type=file] { font: inherit; font-size: .9rem; color: var(--text); max-width: 100%; }\n"
+"      input[type=file]::file-selector-button { font: inherit; font-size: .85rem; font-weight: 600; color: var(--accent); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 7px; padding: .35rem .8rem; margin-right: .75rem; cursor: pointer; }\n"
+"      input[type=file]::file-selector-button:hover { background: var(--accent-soft); }\n"
+"      .or-divider { display: flex; align-items: center; gap: .75rem; margin: 1rem 0; color: var(--muted); font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }\n"
+"      .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-strong); }\n"
+"      .btn.secondary { color: var(--accent); background: var(--surface); border-color: var(--accent); }\n"
+"      .btn.secondary:hover { background: var(--accent-soft); }\n"
+"      .actions form { display: inline; }\n"
+"      table.hits { width: 100%; }\n"
+"      table.hits th.pos, table.hits td.pos { width: 7rem; }\n"
+"      table.hits tbody th { font-family: var(--mono); font-size: .84rem; font-weight: 600; color: var(--accent-dark); background: var(--surface-2); border-top: 1px solid var(--border-strong); border-bottom: 1px solid var(--border); white-space: normal; word-break: break-all; letter-spacing: 0; }\n"
+"      table.hits tbody tr:hover th { background: var(--surface-2); }\n"
+"      table.hits td.match { letter-spacing: .08em; }\n"
+"      /* wildcard residue: colour plus dotted underline so it is not colour alone */\n"
+"      .wc { background: #fbf8ee; color: #6b5a2a; border-radius: 2px; padding: 0 .1em; font-weight: 600; text-decoration: underline dotted; }\n"
+"      .empty { background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 1.5rem; text-align: center; color: var(--muted); }\n"
+"   </style>\n";
 
-void printPageHeader(const char* version) {
-    std::cout
-        << "<a class=\"skip-link\" href=\"#main-content\">Skip to main content</a>\n"
-        << "<header role=\"banner\">\n"
-        << "  <div class=\"logo-mark\" aria-hidden=\"true\">"
-           "&#x2B21; MotifHunter v" << version << "</div>\n"
-        << "  <h1>Protein <span class=\"brand-accent\">Motif</span> Search</h1>\n"
-        << "  <p class=\"subtitle\">"
-           "Scan FASTA sequences for patterns with wildcard support</p>\n"
-        << "</header>\n"
-        << "<main id=\"main-content\">\n"
-        << "<div class=\"container\">\n";
+void printPageTop(const char* version) {
+    std::string extra = std::string("   <!-- motif_search v") + version + " -->\n" + g_szMotifCSS;
+    // cgi-page.h writes with printf; std::cout and stdio are kept in sync
+    // (sync_with_stdio is left at its default), so the two may be mixed.
+    std::cout.flush();
+    PRINT_PAGE_HEADER("Motif Hunter", extra.c_str());
+    fflush(stdout);
+
+    std::cout <<
+        "    <div id=\"page\" class=\"container\">\n"
+        "       <section>\n"
+        "          <header class=\"major\">\n"
+        "             <h1>Motif hunter</h1>\n"
+        "             <p class=\"lede\">Scan protein sequences in FASTA format for a short sequence motif. "
+        "Use X as a single-residue wildcard. Each match is reported with its position, "
+        "and the results can be downloaded as a text report.</p>\n"
+        "          </header>\n\n";
 }
 
 void printErrors(const std::vector<std::string>& errors) {
@@ -656,8 +535,7 @@ void printErrors(const std::vector<std::string>& errors) {
     std::cout <<
         "<div class=\"error-box\" role=\"alert\" "
         "aria-live=\"assertive\" aria-atomic=\"true\">\n"
-        "  <p class=\"error-box-title\">"
-        "Error &#8212; please correct the following:</p>\n"
+        "  <p>Please correct the following:</p>\n"
         "  <ul>\n";
     for (const auto& e : errors)
         std::cout << "    <li>" << htmlEscape(e) << "</li>\n";
@@ -666,66 +544,49 @@ void printErrors(const std::vector<std::string>& errors) {
 
 void printForm(const std::string& motifVal, const std::string& fastaText) {
     std::cout <<
-        "\n<form method=\"POST\" enctype=\"multipart/form-data\" "
-        "id=\"searchForm\" aria-label=\"Protein motif search\">\n\n"
+        "<form method=\"POST\" enctype=\"multipart/form-data\" "
+        "id=\"searchForm\" aria-label=\"Protein motif search\">\n"
+        "<div class=\"form-grid\">\n\n"
 
-        "  <fieldset>\n"
-        "    <legend>Search Motif</legend>\n"
-        "    <label for=\"motif\">\n"
-        "      Pattern\n"
-        "      <span style=\"font-weight:400;color:var(--text-sub)\">"
-        " (use X as a single-residue wildcard)</span>\n"
-        "    </label>\n"
-        "    <input type=\"text\" id=\"motif\" name=\"motif\"\n"
-        "           placeholder=\"FLXLFX\"\n"
-        "           value=\"" << htmlEscape(motifVal) << "\"\n"
-        "           autocomplete=\"off\" spellcheck=\"false\" maxlength=\"100\"\n"
-        "           aria-describedby=\"motif-hint\" aria-required=\"true\" required>\n"
-        "    <p class=\"field-hint\" id=\"motif-hint\">\n"
-        "      Letters A&#8211;Z only. X matches any single amino acid.\n"
-        "      Examples: <code>FLXLFX</code>, <code>GXXGXG</code>,"
-        " <code>RGD</code>, <code>WXXXW</code>\n"
-        "    </p>\n"
-        "  </fieldset>\n\n"
+        // ── Motif panel ─────────────────────────────────────────────
+        "<div class=\"panel\">\n"
+        "<fieldset class=\"options\">\n"
+        "<legend>Motif</legend>\n"
+        "<input type=\"text\" id=\"motif\" name=\"motif\" class=\"mono motif\"\n"
+        "       placeholder=\"FLXLFX\"\n"
+        "       value=\"" << htmlEscape(motifVal) << "\"\n"
+        "       autocomplete=\"off\" spellcheck=\"false\" maxlength=\"100\"\n"
+        "       aria-describedby=\"motif-hint\" aria-required=\"true\" required>\n"
+        "<p class=\"hint\" id=\"motif-hint\">Letters A&#8211;Z only. X matches any single amino acid. "
+        "<br>Examples: <code>FLXLFX</code>, <code>GXXGXG</code>, <code>RGD</code>, <code>WXXXW</code></p>\n"
+        "</fieldset>\n"
+        "<div class=\"actions\"><input type=\"submit\" name=\"search\" value=\"Search\"></div>\n"
+        "</div>\n\n"  // panel
 
-        "  <fieldset>\n"
-        "    <legend>Protein Sequences (FASTA)</legend>\n\n"
-        "    <label for=\"fasta_text\">Paste FASTA sequences</label>\n"
-        "    <textarea id=\"fasta_text\" name=\"fasta_text\"\n"
-        "              aria-describedby=\"fasta-paste-hint\" spellcheck=\"false\"\n"
-        "              placeholder=\"&gt;sp|P12345|MYO_HUMAN Myosin heavy chain"
+        // ── Sequences panel ─────────────────────────────────────────
+        "<div class=\"panel\">\n"
+        "<label class=\"field-label\" for=\"fasta_text\">Protein sequences (FASTA)</label>\n"
+        "<p class=\"hint\" style=\"margin: 0 0 .5rem\">Each sequence must start with a "
+        "<code>&gt;</code> header line.</p>\n"
+        "<textarea id=\"fasta_text\" name=\"fasta_text\" class=\"wide mono\" rows=\"10\"\n"
+        "          aria-describedby=\"fasta-paste-hint\" spellcheck=\"false\"\n"
+        "          placeholder=\"&gt;sp|P12345|MYO_HUMAN Myosin heavy chain"
         "&#10;MSSTKIHLEQHVKEIDISQ...\">"
         << htmlEscape(fastaText) <<
         "</textarea>\n"
-        "    <p class=\"field-hint\" id=\"fasta-paste-hint\">\n"
-        "      Standard FASTA format. Each sequence must start with a "
-        "<code>&gt;</code> header line.\n"
-        "    </p>\n\n"
-        "    <div class=\"or-divider\" aria-hidden=\"true\">or upload a file</div>\n\n"
-        "    <label for=\"fasta_file\" "
-        "style=\"font-size:.9rem;margin-bottom:.4rem\">\n"
-        "      Upload a FASTA file\n"
-        "    </label>\n"
-        "    <div class=\"file-zone\" id=\"fileZone\"\n"
-        "         role=\"group\" "
-        "aria-label=\"File upload area &#8212; click or drag and drop\">\n"
-        "      <input type=\"file\" id=\"fasta_file\" name=\"fasta_file\"\n"
-        "             accept=\".fasta,.fa,.faa,.txt\"\n"
-        "             aria-describedby=\"file-hint file-name-display\">\n"
-        "      <div class=\"file-zone-inner\">\n"
-        "        <span class=\"file-icon\" aria-hidden=\"true\">&#128194;</span>\n"
-        "        <p><strong>Click to browse</strong> or drag and drop</p>\n"
-        "        <p id=\"file-hint\">"
-        "Accepted: .fasta .fa .faa .txt &nbsp;&middot;&nbsp; Max 50&nbsp;MB</p>\n"
-        "        <div id=\"file-name-display\" "
-        "aria-live=\"polite\" aria-atomic=\"true\"></div>\n"
-        "      </div>\n"
-        "    </div>\n"
-        "  </fieldset>\n\n"
-        "  <button type=\"submit\" class=\"btn-search\" name=\"search\" value=\"1\">\n"
-        "    Run Motif Search\n"
-        "  </button>\n"
-        "</form>\n";
+        "<p class=\"hint\" id=\"fasta-paste-hint\">Paste sequences above, or upload a file below.</p>\n"
+        "<div class=\"or-divider\" aria-hidden=\"true\">or</div>\n"
+        "<div class=\"field\">\n"
+        "<label class=\"field-label\" for=\"fasta_file\">Upload a FASTA file</label>\n"
+        "<input type=\"file\" id=\"fasta_file\" name=\"fasta_file\"\n"
+        "       accept=\".fasta,.fa,.faa,.txt\" aria-describedby=\"file-hint\">\n"
+        "<p class=\"hint\" id=\"file-hint\">Accepted: .fasta .fa .faa .txt &nbsp;&middot;&nbsp; "
+        "Max 50&nbsp;MB. <br>An uploaded file takes precedence over pasted text.</p>\n"
+        "</div>\n"
+        "</div>\n\n"  // panel
+
+        "</div>\n"    // form-grid
+        "</form>\n\n";
 }
 
 // Render one matched sequence string with wildcard positions highlighted
@@ -749,172 +610,121 @@ void printResults(const std::vector<ProteinResult>& results,
                   const std::string& fastaSource) {
 
     std::cout <<
-        "\n<section aria-live=\"polite\" aria-label=\"Search results\" "
-        "style=\"margin-top:2rem\">\n\n"
-
-        "<dl class=\"stats-bar\" aria-label=\"Search summary\">\n"
-        "  <div class=\"stat-pill\">"
-        "<dt>Proteins scanned:</dt>"
-        "<dd class=\"stat-val\">" << totalProteins << "</dd></div>\n"
-        "  <div class=\"stat-pill highlight\">"
-        "<dt>Matches found:</dt>"
-        "<dd class=\"stat-val\">" << totalHits << "</dd></div>\n"
-        "  <div class=\"stat-pill\">"
-        "<dt>Proteins with hits:</dt>"
-        "<dd class=\"stat-val\">" << results.size() << "</dd></div>\n"
-        "  <div class=\"stat-pill\">"
-        "<dt>Motif:</dt>"
-        "<dd class=\"stat-val\">" << htmlEscape(motif) << "</dd></div>\n"
-        "</dl>\n\n"
-
-        "<div class=\"results-header\">\n"
-        "  <h2 class=\"results-heading\" id=\"results-heading\">Results</h2>\n";
-
-    if (!results.empty()) {
-        // Shared hidden fields are repeated in each form because browsers only
-        // submit fields belonging to the form that was submitted.
-        // Each form is self-contained so either button works independently.
-
-        // Helper lambda emits the common hidden fields for both forms
-        auto emitHiddenFields = [&]() {
-            std::cout
-                << "    <input type=\"hidden\" name=\"motif\" value=\""
-                << htmlEscape(motif) << "\">\n"
-                << "    <input type=\"hidden\" name=\"result_source\" value=\""
-                << htmlEscape(fastaSource) << "\">\n"
-                << "    <input type=\"hidden\" name=\"result_total\" value=\""
-                << totalProteins << "\">\n";
-            for (const auto& r : results) {
-                for (const auto& h : r.hits) {
-                    std::cout
-                        << "    <input type=\"hidden\" name=\"result_desc\" value=\""
-                        << htmlEscape(r.desc) << "\">\n"
-                        << "    <input type=\"hidden\" name=\"result_pos\" value=\""
-                        << h.pos << "\">\n"
-                        << "    <input type=\"hidden\" name=\"result_match\" value=\""
-                        << htmlEscape(h.match) << "\">\n";
-                }
-            }
-        };
-
-        std::cout << "  <div class=\"btn-group\">\n";
-
-        // ── Full results download ──────────────────────────────────────────
-        std::cout <<
-            "  <form method=\"POST\" enctype=\"multipart/form-data\" "
-            "aria-label=\"Download full results\">\n"
-            "    <input type=\"hidden\" name=\"download\" value=\"1\">\n";
-        emitHiddenFields();
-        std::cout <<
-            "    <button type=\"submit\" class=\"btn-download\">"
-            "&#8595; Download results (.txt)"
-            "</button>\n"
-            "  </form>\n";
-
-        // ── Gene-only download ─────────────────────────────────────────────
-        std::cout <<
-            "  <form method=\"POST\" enctype=\"multipart/form-data\" "
-            "aria-label=\"Download gene names only\">\n"
-            "    <input type=\"hidden\" name=\"download_gene\" value=\"1\">\n";
-        emitHiddenFields();
-        std::cout <<
-            "    <button type=\"submit\" class=\"btn-download\">"
-            "&#8595; Download results (.txt)"
-            "<small>protein &amp; gene only</small>"
-            "</button>\n"
-            "  </form>\n";
-
-        std::cout << "  </div>\n";
-    }
-        std::cout << "</div>\n\n";
+        "<dl class=\"summary\" aria-label=\"Search summary\">\n"
+        "  <dt>Motif</dt><dd class=\"stat-val\">" << htmlEscape(motif) << "</dd>\n"
+        "  <dt>Source</dt><dd class=\"stat-val\">" << htmlEscape(fastaSource) << "</dd>\n"
+        "  <dt>Proteins scanned</dt><dd class=\"stat-val\">" << totalProteins << "</dd>\n"
+        "  <dt>Proteins with hits</dt><dd class=\"stat-val\">" << results.size() << "</dd>\n"
+        "  <dt>Matches found</dt><dd class=\"stat-val\">" << totalHits << "</dd>\n"
+        "</dl>\n\n";
 
     if (results.empty()) {
         std::cout <<
-            "<div class=\"no-hits\" role=\"status\">\n"
-            "  <span class=\"no-hits-icon\" aria-hidden=\"true\">&#128269;</span>\n"
+            "<div class=\"empty\" role=\"status\">\n"
             "  No sequences matched the motif <strong>"
             << htmlEscape(motif) << "</strong>.\n"
-            "  Check your motif pattern or try a different FASTA input.\n"
+            "  Check the motif pattern or try a different FASTA input.\n"
             "</div>\n";
-    } else {
-        for (size_t idx = 0; idx < results.size(); ++idx) {
-            const auto& r = results[idx];
-            std::cout <<
-                "<article class=\"hit-card\""
-                " style=\"animation-delay:" << (idx * 0.04) << "s\""
-                " aria-label=\"Hit in: " << htmlEscape(r.desc) << "\">\n"
-                "  <p class=\"hit-desc\">" << htmlEscape(r.desc) << "</p>\n"
-                "  <table class=\"hit-table\" aria-label=\"Matches in "
-                << htmlEscape(r.desc) << "\">\n"
-                "    <thead><tr>"
-                "<th scope=\"col\">Position</th>"
-                "<th scope=\"col\">Matched sequence</th>"
-                "</tr></thead>\n"
-                "    <tbody>\n";
-            for (const auto& h : r.hits) {
-                std::cout <<
-                    "      <tr>"
-                    "<td class=\"hit-pos-cell\">" << h.pos << "</td>"
-                    "<td>" << renderMatch(h.match, motif) << "</td>"
-                    "</tr>\n";
-            }
-            std::cout << "    </tbody>\n  </table>\n</article>\n";
-        }
+        return;
     }
-    std::cout << "</section>\n";
+
+    // ── Download buttons ────────────────────────────────────────────
+    // Shared hidden fields are repeated in each form because browsers only
+    // submit fields belonging to the form that was submitted.
+    // Each form is self-contained so either button works independently.
+    auto emitHiddenFields = [&]() {
+        std::cout
+            << "    <input type=\"hidden\" name=\"motif\" value=\""
+            << htmlEscape(motif) << "\">\n"
+            << "    <input type=\"hidden\" name=\"result_source\" value=\""
+            << htmlEscape(fastaSource) << "\">\n"
+            << "    <input type=\"hidden\" name=\"result_total\" value=\""
+            << totalProteins << "\">\n";
+        for (const auto& r : results) {
+            for (const auto& h : r.hits) {
+                std::cout
+                    << "    <input type=\"hidden\" name=\"result_desc\" value=\""
+                    << htmlEscape(r.desc) << "\">\n"
+                    << "    <input type=\"hidden\" name=\"result_pos\" value=\""
+                    << h.pos << "\">\n"
+                    << "    <input type=\"hidden\" name=\"result_match\" value=\""
+                    << htmlEscape(h.match) << "\">\n";
+            }
+        }
+    };
+
+    std::cout << "<div class=\"actions\" style=\"margin: 0 0 1.25rem\">\n";
+
+    std::cout <<
+        "  <form method=\"POST\" enctype=\"multipart/form-data\" "
+        "aria-label=\"Download full results\">\n"
+        "    <input type=\"hidden\" name=\"download\" value=\"1\">\n";
+    emitHiddenFields();
+    std::cout <<
+        "    <button type=\"submit\" class=\"btn secondary\">"
+        "Download results (.txt)</button>\n"
+        "  </form>\n";
+
+    std::cout <<
+        "  <form method=\"POST\" enctype=\"multipart/form-data\" "
+        "aria-label=\"Download protein and gene names only\">\n"
+        "    <input type=\"hidden\" name=\"download_gene\" value=\"1\">\n";
+    emitHiddenFields();
+    std::cout <<
+        "    <button type=\"submit\" class=\"btn secondary\">"
+        "Download protein &amp; gene list (.txt)</button>\n"
+        "  </form>\n";
+
+    std::cout << "</div>\n\n";  // actions
+
+    // ── Hit table: one tbody per protein, description as a group row ──
+    std::cout <<
+        "<p class=\"note\">Highlighted residues are at wildcard (X) positions of the motif.</p>\n"
+        "<div class=\"table-wrap\">\n"
+        "<table class=\"results hits\">\n"
+        "<thead><tr>"
+        "<th class=\"num pos\" scope=\"col\">position</th>"
+        "<th scope=\"col\">matched sequence</th>"
+        "</tr></thead>\n";
+
+    for (const auto& r : results) {
+        std::cout <<
+            "<tbody class=\"hit-card\">\n"
+            "<tr><th colspan=\"2\" scope=\"rowgroup\">" << htmlEscape(r.desc) << "</th></tr>\n";
+        for (const auto& h : r.hits) {
+            std::cout <<
+                "<tr>"
+                "<td class=\"num pos\">" << h.pos << "</td>"
+                "<td class=\"match\">" << renderMatch(h.match, motif) << "</td>"
+                "</tr>\n";
+        }
+        std::cout << "</tbody>\n";
+    }
+
+    std::cout <<
+        "</table>\n"
+        "</div>\n";     // table-wrap
 }
 
-void printPageFooter(const char* version) {
+void printPageBottom() {
     std::cout <<
-        "\n</div><!-- /container -->\n"
-        "</main>\n\n"
-        "<footer role=\"contentinfo\">\n"
-        "  MotifHunter v" << version << " &mdash;\n"
-        "  FASTA validated &middot; streaming processing &middot; "
-        "no sequences stored &middot; C++ CGI\n"
-        "</footer>\n\n"
+        "       </section>\n"
+        "    </div>\n"  // page
         "<script>\n"
-        "/* File zone drag-and-drop + file picker */\n"
-        "const zone    = document.getElementById('fileZone');\n"
-        "const fileIn  = document.getElementById('fasta_file');\n"
-        "const display = document.getElementById('file-name-display');\n"
-        "fileIn.addEventListener('change', () => {\n"
-        "  display.textContent = fileIn.files[0]\n"
-        "    ? 'Selected file: ' + fileIn.files[0].name : '';\n"
-        "});\n"
-        "['dragenter','dragover'].forEach(ev =>\n"
-        "  zone.addEventListener(ev, e => {\n"
-        "    e.preventDefault(); zone.classList.add('drag-over');\n"
-        "    zone.setAttribute('aria-dropeffect','copy');\n"
-        "  })\n"
-        ");\n"
-        "['dragleave','drop'].forEach(ev =>\n"
-        "  zone.addEventListener(ev, e => {\n"
-        "    e.preventDefault(); zone.classList.remove('drag-over');\n"
-        "    zone.removeAttribute('aria-dropeffect');\n"
-        "  })\n"
-        ");\n"
-        "zone.addEventListener('drop', e => {\n"
-        "  const f = e.dataTransfer.files[0];\n"
-        "  if (f) {\n"
-        "    const dt = new DataTransfer(); dt.items.add(f);\n"
-        "    fileIn.files = dt.files;\n"
-        "    display.textContent = 'Selected file: ' + f.name;\n"
-        "  }\n"
-        "});\n"
         "/* Auto-uppercase motif field */\n"
-        "const motifInput = document.getElementById('motif');\n"
-        "motifInput.addEventListener('input', () => {\n"
-        "  const pos = motifInput.selectionStart;\n"
+        "var motifInput = document.getElementById('motif');\n"
+        "motifInput.addEventListener('input', function () {\n"
+        "  var pos = motifInput.selectionStart;\n"
         "  motifInput.value = motifInput.value.toUpperCase();\n"
         "  motifInput.setSelectionRange(pos, pos);\n"
         "});\n"
-        "/* Move focus to results after submit (WCAG 2.4.3) */\n"
-        "const rs = document.querySelector('[aria-label=\"Search results\"]');\n"
-        "if (rs) { rs.setAttribute('tabindex','-1'); rs.focus({preventScroll:false}); }\n"
-        "</script>\n"
-        "</body>\n"
-        "</html>\n";
+        "/* Move focus to results after submit */\n"
+        "var rs = document.getElementById('results');\n"
+        "if (rs && rs.children.length) { rs.setAttribute('tabindex','-1'); rs.focus(); }\n"
+        "</script>\n";
+    std::cout.flush();
+    PRINT_PAGE_FOOTER();
+    fflush(stdout);
 }
 
 
@@ -1042,8 +852,6 @@ void sendDownload(const std::vector<ProteinResult>& results,
    MAIN
    ────────────────────────────────────────────────────────────── */
 int main() {
-    // CGI uses raw binary streams; don't translate \r\n on Windows hosts
-    std::ios::sync_with_stdio(false);
 
     const char* requestMethod  = std::getenv("REQUEST_METHOD");
     const char* contentTypeEnv = std::getenv("CONTENT_TYPE");
@@ -1052,10 +860,10 @@ int main() {
     /* ── GET: serve blank form ── */
     if (!requestMethod || std::string(requestMethod) != "POST") {
         printHeaders();
-        printPageHead();
-        printPageHeader(APP_VERSION);
+        printPageTop(APP_VERSION);
         printForm("", "");
-        printPageFooter(APP_VERSION);
+        std::cout << "<div id=\"results\" aria-live=\"polite\" aria-label=\"Search results\"></div>\n\n";
+        printPageBottom();
         return 0;
     }
 
@@ -1195,14 +1003,17 @@ int main() {
 
     // 5. Render HTML response
     printHeaders();
-    printPageHead();
-    printPageHeader(APP_VERSION);
+    printPageTop(APP_VERSION);
     printErrors(errors);
     printForm(motifDisplay, form.fastaText);
 
+    // The results container is always present (empty on a blank form),
+    // matching the other tools; #results:empty collapses its top margin.
+    std::cout << "<div id=\"results\" aria-live=\"polite\" aria-label=\"Search results\">\n";
     if (errors.empty() && totalProteins > 0)
         printResults(results, motifDisplay, totalProteins, totalHits, fastaSource);
+    std::cout << "</div>\n\n";  // results
 
-    printPageFooter(APP_VERSION);
+    printPageBottom();
     return 0;
 }
