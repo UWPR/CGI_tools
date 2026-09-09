@@ -164,10 +164,11 @@ static void PRINT_PAGE_HEADER(const char *szTitle, const char *szExtraHead)
    printf("   <div class=\"wrapper\">\n");
    printf("   <main>\n");
    printf("      <div id=\"header\">\n");
-   printf("         <div id=\"logo\"><a href=\"https://proteomicsresource.washington.edu/\">UW Proteomics Resource</a></div>\n");
+   printf("         <div id=\"logo\"><a href=\"/\">UW Proteomics Resource</a></div>\n");
    printf("         <nav id=\"nav\">\n");
    printf("            <ul>\n");
-   printf("               <li><a href=\"https://proteomicsresource.washington.edu/\">home</a></li>\n");
+   printf("               <li><a href=\"/tools/\">Tools</a></li>\n");
+   printf("               <li><a href=\"/\">home</a></li>\n");
    printf("            </ul>\n");
    printf("         </nav>\n");
    printf("      </div>\n");
